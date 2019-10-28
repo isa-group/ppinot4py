@@ -1,0 +1,9 @@
+{
+    "when": {
+        "changesToState": {
+            "dataObjectState": {
+                "name": "ESTADO == 'Fijada' && PRIORIDAD == '${priority}' && (RESOLUTOR == 'SAS OFIMATICA-LAN' || RESOLUTOR == 'RESOLUTOR-PUESTO-USUARIO') && TIPOLOGIA.startsWith('Incidencia')"
+                                }
+                            }
+            }
+}
