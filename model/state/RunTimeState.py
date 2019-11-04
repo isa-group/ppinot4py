@@ -7,13 +7,12 @@ from base import CountMeasure
 class DataObjectState():
     
     def __init__(self, name):
+
+        name = str(name)
         self.name = name
-        
+
     def getName(self):
         return self.name
-        
-    def setName(self):
-        self.name = name
 
     def __repr__(self):
         return "%s" % (self.name)   
