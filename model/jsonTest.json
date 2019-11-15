@@ -2,7 +2,7 @@
     "when": {
         "changesToState": {
             "dataObjectState": {
-                "name": "lifecycle:transition == In Progress"
+                "name": "lifecycle_transition == 'In Progress'"
                                 }
                             }
             }

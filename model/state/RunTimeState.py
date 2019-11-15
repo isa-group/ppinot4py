@@ -1,4 +1,4 @@
-from base import CountMeasure
+from measures import base
 #class RunTimeState:
        
 #    def __init__(self):
@@ -21,8 +21,8 @@ class ComplexState():
     
     def __init__(self, first, last, type):
 
-        first = CountMeasure.TimeInstantCondition(first)
-        last = CountMeasure.TimeInstantCondition(last)
+        first = base.TimeInstantCondition(first)
+        last = base.TimeInstantCondition(last)
         
         self.first = first
         self.last = last
