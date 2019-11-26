@@ -1,5 +1,5 @@
 from state import RunTimeState 
-
+from condition.Condition import TimeInstantCondition
 
 class CountMeasure(object):
 
@@ -16,25 +16,11 @@ class CountMeasure(object):
     def __repr__(self):
         return "%s" % (self.when)
 
-
-class TimeInstantCondition(object):
-    
-    def __init__(self, changesToState):
-        self.changesToState = changesToState
-    
-    def __repr__(self):
-        return "%s" % (self.changesToState)
-
-    def getChangesToState(self):
-        return self.changesToState
-
 class DataMeasure():
     
     def __init__(self, dataContentSelection, precondition, first):
        
         self.dataContentSelection = dataContentSelection
-
-        # Al final la precondition es una TimeInstantCondition que solo tiene un NAME
         self.precondition = precondition
         self.first = first
 
@@ -59,11 +45,10 @@ class DataMeasure():
 
 class TimeMeasure():
 
-    def __init__(self, columnToCompute, fromCondition, toCondition, 
+    def __init__(self, fromCondition, toCondition, 
                     timeMeasureType, singleInstanceAggFunction, 
                         considerOnly, precondition, computeUnfinished, firstTo):
-
-        self.columnToCompute = columnToCompute   
+  
         self.fromCondition = fromCondition
         self.toCondition = toCondition
         self.timeMeasureType = timeMeasureType
@@ -72,12 +57,6 @@ class TimeMeasure():
         self.precondition = precondition
         self.computeUnfinished = computeUnfinished
         self.firstTo = firstTo
-
-    def getColumnToCompute(self):
-        return self.columnToCompute
-
-    def setColumnToCompute(self, newColumn):
-        self.columnToCompute = newColumn
 
 
     def getFromCondition(self):
@@ -134,4 +113,18 @@ class TimeMeasure():
 
     def setFirst(self, newFirst):
         self.firstTo = newFirst
-        
+
+
+class aggregatedMeasure():
+
+    def __init__(self, baseMeasure, filterToApply,  singleInstanceAggFunction, grouper):
+  
+        self.baseMeasure = baseMeasure
+        self.filterToApply = filterToApply
+        self.singleInstanceAggFunction = singleInstanceAggFunction
+        self.grouper = grouper
+
+        # relative = true -> desde la fecha
+        # relative = false -> mes completo
+
+ 

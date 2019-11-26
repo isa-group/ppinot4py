@@ -28,7 +28,10 @@ countCondition = base.TimeInstantCondition(countState)
 countMeasure = base.CountMeasure(countCondition)
 
 # Data measure used
-dataMeasure = base.DataMeasure("lifecycle_transition", "impact == 'Medium'", False)
+countState = RunTimeState.DataObjectState("concept_name == 'Queued'")
+countCondition = base.TimeInstantCondition(countState)
+countMeasure = base.CountMeasure(countCondition)
+dataMeasure = base.DataMeasure("lifecycle_transition", countMeasure, False)
 
 # Time measure used
 timeMeasureCyclicSum = base.TimeMeasure('lifecycle_transition', 'lifecycle_transition == "In Progress"',
@@ -46,17 +49,20 @@ timeMeasureLinear = base.TimeMeasure('lifecycle_transition', 'lifecycle_transiti
 
 class MyTest(unittest.TestCase):
     def testTimeMeasureCyclicSum(self):
-        self.assertEqual(measureComputer(timeMeasureCyclicSum, dataframe, id_case, time_column).size, 7371)
+        self.assertEqual(measureComputer(timeMeasureCyclicSum, dataframe, id_case, time_column).size, 4354)
     def testTimeMeasureCyclicMax(self):
-        self.assertEqual(measureComputer(timeMeasureCyclicMax, dataframe, id_case, time_column).size, 7371)
+        self.assertEqual(measureComputer(timeMeasureCyclicMax, dataframe, id_case, time_column).size, 4354)
     def testTimeMeasureCyclicMin(self):
-        self.assertEqual(measureComputer(timeMeasureCyclicMin, dataframe, id_case, time_column).size, 7371)
+        self.assertEqual(measureComputer(timeMeasureCyclicMin, dataframe, id_case, time_column).size, 4354)
     def testTimeMeasureCyclicAvg(self):
-        self.assertEqual(measureComputer(timeMeasureCyclicAvg, dataframe, id_case, time_column).size, 7371)
+        self.assertEqual(measureComputer(timeMeasureCyclicAvg, dataframe, id_case, time_column).size, 4354)
+
     def testTimeMeasureLinearFirstFalse(self):
         self.assertEqual(measureComputer(timeMeasureLinear, dataframe, id_case, time_column).size, 7537)
+
     def testDataMeasureFirstFalse(self):
-        self.assertEqual(measureComputer(dataMeasure, dataframe, id_case, time_column).size, 4045)
+        self.assertEqual(measureComputer(dataMeasure, dataframe, id_case, time_column).size, 3973)
+        
     def testCountMeasure(self):
         self.assertEqual(measureComputer(countMeasure, dataframe, id_case, time_column).size, 7554)
 
