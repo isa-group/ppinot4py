@@ -14,7 +14,7 @@ def aggregatedCompute(dataframe, measure, id_case, time_column):
     istime = False
     
     filteredDataframe = measureComputer.measureComputer(baseMeasure, dataframe)
-    
+
     time_column = auxFunctions.timeCalculator(dataframe, False, id_case, time_column)
     
     if(filterToApply != ""):

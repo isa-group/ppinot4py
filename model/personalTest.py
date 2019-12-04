@@ -35,6 +35,7 @@ countStateTimeA = DataObjectState('lifecycle_transition == "In Progress"')
 countConditionTimeA = TimeInstantCondition(countStateTimeA)
 countMeasureTimeA = CountMeasure(countConditionTimeA)
 
+
 countStateTimeB = DataObjectState('lifecycle_transition == "Closed"')
 countConditionTimeB = TimeInstantCondition(countStateTimeB)
 countMeasureTimeB = CountMeasure(countConditionTimeB)
@@ -43,18 +44,18 @@ countStateTimeC = DataObjectState('lifecycle_transition == "Awaiting Assignment"
 countConditionTimeC = TimeInstantCondition(countStateTimeC)
 countMeasureTimeC = CountMeasure(countConditionTimeC)
 
-timeMeasureCyclic = TimeMeasure(countMeasureTimeA, countMeasureTimeB, 'CYCLIC')
+timeMeasureCyclic = TimeMeasure(countMeasureTimeA, countMeasureTimeC, 'CYCLIC', 'AVG')
 
 
-timeMeasureLinearA = TimeMeasure(countMeasureTimeA, countMeasureTimeB, 'LINEAR')
-timeMeasureLinearB = TimeMeasure(countMeasureTimeB, countMeasureTimeA, 'LINEAR')
-timeMeasureLinearC = TimeMeasure(countMeasureTimeA, countMeasureTimeC, 'LINEAR')
+timeMeasureLinearA = TimeMeasure(countMeasureTimeA, countMeasureTimeB)
+timeMeasureLinearB = TimeMeasure(countMeasureTimeB, countMeasureTimeA)
+timeMeasureLinearC = TimeMeasure(countMeasureTimeA, countMeasureTimeC)
 
 
               
 #baseMeasure = measureComputer(timeMeasureLinear, dataframe)
-timeGrouper = grouper('60s')
-aggregatedCom = aggregatedMeasure(timeMeasureLinearA, '', 'SUM', timeGrouper)
+timeGrouper = grouper('2W')
+aggregatedMeasure = aggregatedMeasure(timeMeasureLinearA, '', 'SUM', timeGrouper)
 
 measure_dictionary = {'ProgressCount': timeMeasureLinearA, 'ClosedCount': timeMeasureLinearB, 'AwwaitingCount': timeMeasureLinearC}
 

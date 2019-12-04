@@ -1,10 +1,9 @@
 from state import RunTimeState 
 from condition.Condition import TimeInstantCondition
 
-class CountMeasure(object):
+class CountMeasure():
 
     def __init__(self, when):
-        #when = TimeInstantCondition(when)
         self.when = when
 
     def getWhen(self):
@@ -46,7 +45,7 @@ class DataMeasure():
 class TimeMeasure():
 
     def __init__(self, fromCondition, toCondition, 
-                    timeMeasureType = 'Linear', singleInstanceAggFunction = 'SUM', 
+                    timeMeasureType = 'LINEAR', singleInstanceAggFunction = 'SUM', 
                          firstTo = 'False', precondition = ''):
   
         self.fromCondition = fromCondition
