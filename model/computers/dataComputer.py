@@ -2,15 +2,15 @@ from condition.conditionChooser import conditionChooser
 
 def dataCompute(dataframe, condition, id_case):
 
-    precond = (condition.precondition.when)
+    precondition = (condition.precondition.when)
 
-    auxDataframe = conditionChooser(dataframe, id_case, precond)
+    filtered_series = conditionChooser(dataframe, id_case, precondition)
     
-    finalDataframe = dataframe[auxDataframe]
+    final_dataframe = dataframe[filtered_series]
    
     if(condition.first):
-        value = finalDataframe.groupby(id_case)[condition.dataContentSelection].first()
+        result = final_dataframe.groupby(id_case)[condition.dataContentSelection].first()
     else:
-        value = finalDataframe.groupby(id_case)[condition.dataContentSelection].last()
+        result = final_dataframe.groupby(id_case)[condition.dataContentSelection].last()
 
-    return value
+    return result

@@ -3,6 +3,7 @@ from computers.countComputer import countCompute
 from computers.dataComputer import dataCompute
 from computers.timeComputerGeneric import timeCompute
 from computers.aggregatedComputer import aggregatedCompute
+from computers.derivedComputer import derivedCompute
 
 def measureComputer(measure, dataframe, id_case = 'case_concept_name', time_column = 'time_timestamp'):
 
@@ -18,6 +19,8 @@ def measureComputer(measure, dataframe, id_case = 'case_concept_name', time_colu
         computer = timeCompute(dataframe,measure, id_case, time_column)
     if(type(measure) == base.aggregatedMeasure):
         computer = aggregatedCompute(dataframe, measure, id_case, time_column)
+    if(type(measure) == base.derivedMeasure):
+        computer = derivedCompute(dataframe, measure, id_case, time_column)
     return computer
 
 

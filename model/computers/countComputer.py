@@ -2,10 +2,10 @@ from condition.conditionChooser import conditionChooser
 
 def countCompute(dataframe, condition, id_case):
 
-    precond = (condition.when)
+    precondition = (condition.when)
 
-    filteredSeries = conditionChooser(dataframe, id_case, precond)
+    filtered_series = conditionChooser(dataframe, id_case, precondition)
 
-    value = filteredSeries.groupby(dataframe[id_case]).sum()
+    result = filtered_series.groupby(dataframe[id_case]).sum()
 
-    return value
+    return result
