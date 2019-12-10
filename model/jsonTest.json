@@ -1,0 +1,11 @@
+{
+    "when": {
+        "changesToState": {
+            "dataObjectState": {
+                "name": "lifecycle_transition == 'In Progress'"
+                                }
+                            }
+            }
+}
+
+
