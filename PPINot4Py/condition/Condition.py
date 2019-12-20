@@ -11,6 +11,12 @@ class DataCondition():
         return "%s" % (self.appliesTo)
 
 class TimeInstantCondition(object):
+    """When condition passes from !condition to condition.
+    
+    Args:
+    
+            - changesToState: Of type 'DataObjectState', composed by String condition
+    """
     
     def __init__(self, changesToState):
         self.changesToState = changesToState

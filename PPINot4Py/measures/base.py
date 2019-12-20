@@ -1,18 +1,26 @@
 class CountMeasure():
+    """Measure to calc how many times a condition happened.
+    
+    Args:
+    
+            - when: Condition that you want to count
+    """
 
     def __init__(self, when):
         self.when = when
-
-    def getWhen(self):
-        return self.when
-
-    def setWhen(self):
-        self.when = when
-
+    
     def __repr__(self):
         return "%s" % (self.when)
 
 class DataMeasure():
+    """Measure that returns a data from specific filter.
+    
+    Args:
+    
+            - dataContentSelection: Column you want to select
+            - precondition: Filter to apply to data
+            - first: True if you want to select first data, False if you want to select last
+    """
     
     def __init__(self, dataContentSelection, precondition, first):
        
@@ -20,30 +28,25 @@ class DataMeasure():
         self.precondition = precondition
         self.first = first
 
-    def isFirst(self):
-        return self.isFirst
-
-    def setFirst(self, newFirst):
-        self.isFirst = newFirst
-
-    def getDataContentSelection(self):
-        return self.dataContentSelection
-
-    def setDataContentSelection(self, newData):
-        self.dataContentSelection = newData
-
-    def getPrecondition(self):
-        return self.precondition
-
-    def setPrecondition(self, newPrecondition):
-        self.precondition = newPrecondition
-
 
 class TimeMeasure():
+    """Measure to calc the time elapsed between A condition and B condition.
+    
+    Args:
+    
+            - fromCondition: Condition where you want to start counting, defined as A
+            - toCondition: End condition, defined as B
+            - timeMeasureType: Linear in case just want a simple A-B calc, Cyclic in case you want to count 
+                all A-B appearances
+            - singleInstanceAggFunction: Only in Cyclic mode. Type of operation applied to our dataset, 
+                can be MAX, MIN, MAX, AVG or GROUPBY. 
+            - precondition: Filter to previusly apply to our dataset
+            - firstTo: Only in Linear mode. True to take first appareance of B, false to take last appareance of B
+    """
 
     def __init__(self, fromCondition, toCondition, 
                     timeMeasureType = 'LINEAR', singleInstanceAggFunction = 'SUM', 
-                         firstTo = 'False', precondition = ''):
+                         firstTo = False, precondition = ''):
   
         self.fromCondition = fromCondition
         self.toCondition = toCondition
@@ -53,62 +56,34 @@ class TimeMeasure():
         self.firstTo = firstTo
 
 
-    def getFromCondition(self):
-        return self.fromCondition
-
-    def setFromCondition(self, newFrom):
-        self.fromCondition = newFrom
-
-
-    def getToCondition(self):
-        return self.toCondition
-
-    def setToCondition(self, newTo):
-        self.toCondition = newTo
-
-
-    def getTimeMeasureType(self):
-        return self.isFirst
-
-    def setTimeMeasureType(self, newTimeMeasure):
-        self.timeMeasureType = newTimeMeasure
-
-
-    def getSingleInstanceAggFunction(self):
-        return self.singleInstanceAggFunction
-
-    def setSingleInstanceAggFunction(self, newAggFunction):
-        self.singleInstanceAggFunction = newAggFunction
-        
-
-    def getPrecondition(self):
-        return self.precondition
-
-    def setPrecondition(self, newPrecondition):
-        self.precondition = newConsider
-           
-
-    def isFirst(self):
-        return self.firstTo
-
-    def setFirst(self, newFirst):
-        self.firstTo = newFirst
-
-
 class aggregatedMeasure():
-
-    def __init__(self, baseMeasure, filterToApply,  singleInstanceAggFunction, grouper):
+    """Measure to group a dataset by certain time interval.
+    
+    Args:
+    
+            - baseMeasure: First measure applied to the base dataframe.
+            - filterToApply: Measure applied to our baseMeasure to filter specific values.
+            - singleInstanceAggFunction: Type of operation applied to our dataset, 
+                can be MAX, MIN, MAX, AVG or GROUPBY.
+            - grouper: Time grouper (https://pandas.pydata.org/pandas-docs/stable/
+                user_guide/timeseries.html#offset-aliases).
+    """
+    def __init__(self, baseMeasure, filterToApply, singleInstanceAggFunction, grouper):
   
         self.baseMeasure = baseMeasure
         self.filterToApply = filterToApply
         self.singleInstanceAggFunction = singleInstanceAggFunction
         self.grouper = grouper
-
-        # relative = true -> desde la fecha
-        # relative = false -> mes completo
-
+        
  
 class derivedMeasure():
+    """Measure that applies an operation to a group of measures.
+    
+    Args:
+    
+            - functionExpression: Aritmathical or logical expresion as String
+            - measureMap: Map of {nameOfMeasure: Measure}
+    """
     
     def __init__(self, functionExpression, measureMap):
       

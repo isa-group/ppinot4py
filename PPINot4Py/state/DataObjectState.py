@@ -1,7 +1,12 @@
 class DataObjectState():
+    """Basic state of a condition.
+    
+    Args:
+    
+            - name: String representation of a condition
+    """
     
     def __init__(self, name):
-        #super(DataObjectState, self).__init__()
         self.name = name
         
     def getName(self):

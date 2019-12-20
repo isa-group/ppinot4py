@@ -48,6 +48,8 @@ def timeCompute(dataframe, condition, id_case, time_column):
             second_filtered_dataframe = first_filtered_dataframe[(first_filtered_dataframe['simple_cond'] == "B") == True]
                 
             toValues = second_filtered_dataframe.groupby(id_case)[time_column].first()
+            
+            dataframeToWork = dataframeToWork.drop(columns=['simple_cond'])
                
         else:
             finalDataframeB = dataframeToWork[B_condition]
@@ -92,7 +94,7 @@ def timeCompute(dataframe, condition, id_case, time_column):
         
         # We calculate the time elapsed in each of the filtered rows     
         time_calculated_dataframe = timeCalculation_and_TimeConversion(sixth_filter_dataframe, time_column)
- 
+    
        
         if(operation == 'SUM'):
             finalResultAlmost = time_calculated_dataframe.groupby(id_case)['time_elapsed_seconds'].sum()
@@ -117,9 +119,11 @@ def timeCompute(dataframe, condition, id_case, time_column):
         # Timestamp is returned in seconds, to convert to timeDelta, (lambda x: datetime.timedelta(seconds = x))
         elif(operation == "GROUPBY"):
             finalResult = time_calculated_dataframe.groupby(id_case)
+            
+        dataframeToWork = dataframeToWork.drop(columns=['simple_cond'])
         
     #finalResult = pd.Series(finalResult['data'])
-    dataframeToWork = dataframeToWork.drop(columns=['simple_cond'])
+    
 
     
     return finalResult

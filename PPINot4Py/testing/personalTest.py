@@ -1,14 +1,12 @@
 import time
 
-from PPINot4Py import timeGrouper, dataframeImporter, computer
-from PPINot4Py import computer
+from PPINot4Py import timeGrouper, importBase, computer
 from PPINot4Py.state import DataObjectState
 from PPINot4Py.condition import Condition
 from PPINot4Py.measures import base
 
-
 # Loading .csv in dataframe
-dataframe = dataframeImporter.importer('bpi_challenge_2013_incidents.xes')
+dataframe = importBase.dataframeImport('bpi_challenge_2013_incidents.xes')
 
 
 # Data measure used
@@ -37,11 +35,11 @@ timeMeasureLinearA = base.TimeMeasure(countMeasureTimeA, countMeasureTimeB)
 timeMeasureLinearB = base.TimeMeasure(countMeasureTimeB, countMeasureTimeA)
 timeMeasureLinearC = base.TimeMeasure(countMeasureTimeA, countMeasureTimeC)
 
-timeMeasureCyclic = base.TimeMeasure(countMeasureTimeA, countMeasureTimeB, 'CYCLIC', 'SUM')
+timeMeasureCyclic = base.TimeMeasure(countMeasureTimeA, countMeasureTimeB, 'CYCLIC', 'MIN')
 
     
 # Aggregated Measure baseMeasure = measureComputer(timeMeasureLinear, dataframe)
-timeGrouper = timeGrouper.grouper('60s')
+timeGrouper = timeGrouper.grouper('gdsgfsajkfbsajk')
 aggregatedMeasure = base.aggregatedMeasure(timeMeasureLinearA, '', 'SUM', timeGrouper)
 
 
@@ -51,5 +49,5 @@ derivedMeasure = base.derivedMeasure('(ProgressCount + ClosedCount) / sqrt(Awwai
 
 # Call to the function and count time
 start_time = time.process_time()
-print(computer.measureComputer(derivedMeasure, dataframe))
+print(computer.measureComputer(dataMeasure, dataframe))
 print("--- %s seconds ---" % (time.process_time() - start_time))

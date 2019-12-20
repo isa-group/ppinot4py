@@ -6,7 +6,7 @@ import datetime
 from PPINot4Py import computer
 
 def aggregatedCompute(dataframe, measure, id_case, time_column):
-
+   
 
     baseMeasure = measure.baseMeasure
     filterToApply = measure.filterToApply
