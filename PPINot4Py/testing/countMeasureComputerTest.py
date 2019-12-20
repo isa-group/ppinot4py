@@ -10,7 +10,7 @@ class MyTest(unittest.TestCase):
     
     def testCompute(self):
         
-        countMeasure = measuresDefinitionAux.auxiliarCountMeasure('lifecycle_transition == "In Progress"')
+        countMeasure = auxiliarCountMeasure('lifecycle_transition == "In Progress"')
     
         IdCase1 = '1-364285768'
         
@@ -24,7 +24,7 @@ class MyTest(unittest.TestCase):
         
     def testComputeNotAppear(self):
         
-        countMeasure = measuresDefinitionAux.auxiliarCountMeasure('lifecycle_transition == "Closed"')
+        countMeasure = auxiliarCountMeasure('lifecycle_transition == "Closed"')
         
         IdCase1 = '1-364285768'
         
@@ -38,7 +38,7 @@ class MyTest(unittest.TestCase):
         
     def testComputeInstances(self):
         
-        countMeasure = measuresDefinitionAux.auxiliarCountMeasure('lifecycle_transition == "In Progress"')
+        countMeasure = auxiliarCountMeasure('lifecycle_transition == "In Progress"')
         
         IdCase1 = '1-364285768'
         idCase2 = '2-364285768'
