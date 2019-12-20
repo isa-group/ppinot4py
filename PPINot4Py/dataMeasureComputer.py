@@ -19,7 +19,7 @@ class MyTest(unittest.TestCase):
                 'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress']}
                 
         dataframeLinear = pd.DataFrame(data)
-        result = measureComputer(countMeasure, dataframeLinear)
+        result = measureComputer(dataMeasure, dataframeLinear)
         
         self.assertEqual(result.iloc[0], True)
         
