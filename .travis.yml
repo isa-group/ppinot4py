@@ -4,6 +4,6 @@ install:
   - pip install PPINot4Py
   
 script:
-  - timeMeasureComputerTest.py
-  - dataMeasureComputer.py
-  - countMeasureComputerTest.py
+  - PPINot4Py/timeMeasureComputerTest.py
+  - PPINot4Py/dataMeasureComputer.py
+  - PPINot4Py/countMeasureComputerTest.py
