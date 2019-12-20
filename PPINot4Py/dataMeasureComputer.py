@@ -11,8 +11,6 @@ class MyTest(unittest.TestCase):
     def testDataComputer(self):
         
         dataMeasure = measuresDefinitionAux.auxiliarDataMeasure("concept_name == 'Queued'", "lifecycle_transition", False)
-        
-        auxiliarDataMeasure
     
         IdCase1 = '1-364285768'
         
