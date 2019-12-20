@@ -3,7 +3,4 @@ language: python
 install:
   - pip install PPINot4Py
   
-script:
-  - python PPINot4Py/timeMeasureComputerTest.py
-  - python PPINot4Py/dataMeasureComputer.py
-  - python PPINot4Py/countMeasureComputerTest.py
+
