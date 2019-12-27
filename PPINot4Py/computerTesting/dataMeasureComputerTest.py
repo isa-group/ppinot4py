@@ -21,7 +21,7 @@ class MyTest(unittest.TestCase):
         dataframeLinear = pd.DataFrame(data)
         result = measureComputer(dataMeasure, dataframeLinear)
         
-        self.assertEqual(result.iloc[0], True)
+        self.assertEqual(result.iloc[0], 'In Progress')
         
         
 if __name__ == "__main__":
