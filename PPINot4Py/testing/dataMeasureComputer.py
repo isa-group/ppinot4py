@@ -11,7 +11,7 @@ class MyTest(unittest.TestCase):
     def testDataComputer(self):
         
         dataMeasure = baseMeasures.dataMeasure("concept_name == 'Queued'", "lifecycle_transition", False)
-    
+  
         IdCase1 = '1-364285768'
         
         data = {'case:concept:name': [IdCase1, IdCase1, IdCase1], 
