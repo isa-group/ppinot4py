@@ -11,7 +11,7 @@ class MyTest(unittest.TestCase):
     def testCompute(self):
         
         countMeasure = baseMeasures.countMeasure('lifecycle_transition == "In Progress"')
-
+    
         IdCase1 = '1-364285768'
         
         data = {'case:concept:name':[IdCase1, IdCase1, IdCase1], 
@@ -25,7 +25,7 @@ class MyTest(unittest.TestCase):
     def testComputeNotAppear(self):
         
         countMeasure = baseMeasures.countMeasure('lifecycle_transition == "Closed"')
-
+        
         IdCase1 = '1-364285768'
         
         data = {'case:concept:name':[IdCase1, IdCase1, IdCase1], 
