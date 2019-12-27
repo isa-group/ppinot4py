@@ -19,9 +19,9 @@ class MyTest(unittest.TestCase):
                 'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress']}
                 
         dataframeLinear = pd.DataFrame(data)
-        result = measureComputer(dataMeasure, dataframeLinear)
+        result = measureComputer(countMeasure, dataframeLinear)
         
-        self.assertEqual(result.iloc[0], 'In Progress')
+        self.assertEqual(result.iloc[0], True)
         
         
 if __name__ == "__main__":
