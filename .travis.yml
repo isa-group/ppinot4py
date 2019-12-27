@@ -8,5 +8,4 @@ script:
   - python PPINot4Py/computerTesting/dataMeasureComputerTest.py	
   - python PPINot4Py/computerTesting/countMeasureComputerTest.py
   - python PPINot4Py/computerTesting/aggregatedMeasureComputerTest.py
-  - python PPINot4Py/computerTesting/derivedMeasureComputer.py
-
+  - python PPINot4Py/computerTesting/derivedMeasureComputerTest.py
