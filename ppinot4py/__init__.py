@@ -1,4 +1,4 @@
 from ppinot4py import model
-from ppinot4py import computers
+from ppinot4py.computers import measure_computer
 
-__all__ = ['model', 'computers']
+__all__ = ['model', 'measure_computer']
