@@ -7,8 +7,7 @@ The user can import the data from a CSV or from a .XES thanks to [pm4py library 
 * **Basic imports to use the library:**
 ``` python
 from PPINot4Py.model import * #To define the measure model
-from PPINot4Py.computers import measure_computer #To perform the calculations
-from PPINot4Py import dataframe_importer #To import the log
+from PPINot4Py import measure_computer #To perform the calculations
 ```
 
 ## Conditions
