@@ -148,19 +148,36 @@ def _cyclic_time_compute(dataframeToWork, A_condition, B_condition, operation, i
     diff = diff.dt.total_seconds()
 
     grouped_diff = diff.groupby(dataframeToWork[id_case])
-    if(operation == 'SUM'):
-        result = grouped_diff.sum()
 
-    elif(operation == "MIN"):
-        result = grouped_diff.min()
-
-    elif(operation == "MAX"):
-        result = grouped_diff.max()
-
-    elif(operation == "AVG"):
-        result = grouped_diff.mean()
+    result = _apply_aggregation(operation, grouped_diff)
         
     return result.apply(lambda x: datetime.timedelta(seconds = x))    
+
+def _apply_aggregation(operation, grouped_df):
+    
+    if not isinstance(operation, str):
+        raise ValueError('Aggregation function must be a string: sum, min, max, avg or groupby')
+
+    if(operation.upper() == 'SUM'):
+        result = grouped_df.sum()
+
+    elif(operation.upper() == "MIN"):
+        result = grouped_df.min()
+
+    elif(operation.upper() == "MAX"):
+        result = grouped_df.max()
+
+    elif(operation.upper() == "AVG"):
+        result = grouped_df.mean()
+
+    elif(operation.upper() == "GROUPBY"):
+        result = grouped_df
+
+    else:
+        raise ValueError(f'Aggregation operation not valid {operation}. Should be: sum, min, max, avg or groupby')
+
+    return result
+
 
 def _compute_cyclic_diff(from_condition, to_condition, id_case, timestamps):
     df = pd.DataFrame({'id':id_case, 't': timestamps})
@@ -214,9 +231,6 @@ def aggregated_compute(dataframe, measure, id_case, time_column, time_grouper = 
     data_grouper = measure.grouper
     is_time = False
 
-    if not isinstance(operation, str):
-        raise ValueError('Aggregation function must be a string: sum, min, max, avg or groupby')
-    
     base_values = measure_computer(base_measure, dataframe, id_case, time_column)
     
     case_end = dataframe.groupby(id_case)[time_column].last()
@@ -228,6 +242,7 @@ def aggregated_compute(dataframe, measure, id_case, time_column, time_grouper = 
         base_values = base_values[filter_condition]
         case_end = case_end[filter_condition]
 
+    # Time to calculate could also be configurable
     internal_df = pd.DataFrame({'data':base_values, 'time_to_calculate':case_end})
     
     if(internal_df['data'].dtype == 'timedelta64[ns]'):
@@ -261,21 +276,9 @@ def aggregated_compute(dataframe, measure, id_case, time_column, time_grouper = 
     else:
         result_grouped = internal_df
 
+    final_result = _apply_aggregation(operation, result_grouped)
 
-    if(operation.upper() == 'SUM'):
-        final_result = result_grouped.sum()
-
-    elif(operation.upper() == "MIN"):
-        final_result = result_grouped.min()
-
-    elif(operation.upper() == "MAX"):
-        final_result = result_grouped.max()
-
-    elif(operation.upper() == "AVG"):
-        final_result = result_grouped.mean()
-
-    elif(operation.upper() == "GROUPBY"):
-        final_result = result_grouped
+    if(operation.upper() == "GROUPBY"):
         is_time = False
     
     if(is_time == True):
