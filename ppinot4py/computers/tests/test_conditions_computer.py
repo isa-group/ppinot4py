@@ -1,8 +1,8 @@
 
 import datetime
 import pandas as pd
-from PPINot4Py.model import RuntimeState, TimeInstantCondition, AppliesTo
-from PPINot4Py.computers import condition_computer
+from ppinot4py.model import RuntimeState, TimeInstantCondition, AppliesTo
+from ppinot4py.computers import condition_computer
 
 def test_time_instant_process_start():
     IdCase1 = '1-364285768'
