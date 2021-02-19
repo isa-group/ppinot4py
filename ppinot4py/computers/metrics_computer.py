@@ -1,5 +1,5 @@
 from .conditions_computer import condition_computer
-from PPINot4Py.model import (
+from ppinot4py.model import (
     CountMeasure, 
     DataMeasure, 
     TimeMeasure, 
@@ -213,6 +213,9 @@ def aggregated_compute(dataframe, measure, id_case, time_column, time_grouper = 
     operation = measure.single_instance_agg_function
     data_grouper = measure.grouper
     is_time = False
+
+    if not isinstance(operation, str):
+        raise ValueError('Aggregation function must be a string: sum, min, max, avg or groupby')
     
     base_values = measure_computer(base_measure, dataframe, id_case, time_column)
     
@@ -259,19 +262,19 @@ def aggregated_compute(dataframe, measure, id_case, time_column, time_grouper = 
         result_grouped = internal_df
 
 
-    if(operation == 'SUM'):
+    if(operation.upper() == 'SUM'):
         final_result = result_grouped.sum()
 
-    elif(operation == "MIN"):
+    elif(operation.upper() == "MIN"):
         final_result = result_grouped.min()
 
-    elif(operation == "MAX"):
+    elif(operation.upper() == "MAX"):
         final_result = result_grouped.max()
 
-    elif(operation == "AVG"):
+    elif(operation.upper() == "AVG"):
         final_result = result_grouped.mean()
 
-    elif(operation == "GROUPBY"):
+    elif(operation.upper() == "GROUPBY"):
         final_result = result_grouped
         is_time = False
     

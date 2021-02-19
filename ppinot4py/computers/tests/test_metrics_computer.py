@@ -1,5 +1,5 @@
-from PPINot4Py.model import *
-from PPINot4Py.computers import *
+from ppinot4py.model import *
+from ppinot4py.computers import *
 import datetime
 import pandas as pd
 

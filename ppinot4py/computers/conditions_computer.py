@@ -1,4 +1,4 @@
-from PPINot4Py.model import AppliesTo, RuntimeState, TimeInstantCondition
+from ppinot4py.model import AppliesTo, RuntimeState, TimeInstantCondition
 import pandas as pd
 
 def condition_computer(dataframe, id_case, condition):
