@@ -2,18 +2,11 @@ from ppinot4py.model import *
 from ppinot4py.computers import *
 import datetime
 import pandas as pd
+import pytest
+import numpy as np
 
-def test_aggregated_compute_time_grouped():
-
-    timeMeasureLinearA = TimeMeasure(
-        from_condition='`lifecycle:transition` == "In Progress"',
-        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
-        first_to=True)
-
-    aggregatedMeasure = AggregatedMeasure(
-        base_measure=timeMeasureLinearA, 
-        single_instance_agg_function='SUM')
-    
+@pytest.fixture
+def log_for_time():
     IdCase1 = '1-364285768'
     IdCase2 = '2-364285768'
     IdCase3 = '3-364285768'
@@ -29,16 +22,82 @@ def test_aggregated_compute_time_grouped():
     data = {'case:concept:name':[IdCase1, IdCase1, IdCase2, IdCase2, IdCase3, IdCase3], 
             'time:timestamp': [time1, time2, time3, time4, time5, time6],
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment' ]}
-    
-    timeResult1 = datetime.timedelta(days=365, minutes=46, seconds=6)
-    timeResult2 = datetime.timedelta(seconds=0)
-    
+
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(aggregatedMeasure, dataframeLinear, time_grouper=pd.Grouper(freq='1Y'))
+
+    return dataframeLinear
+
+def test_aggregated_compute_time_grouped(log_for_time):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA, 
+        single_instance_agg_function='SUM')
+        
+    timeResult1 = datetime.timedelta(days=365, minutes=46, seconds=6)
+    
+    var = measure_computer(aggregatedMeasure, log_for_time, time_grouper=pd.Grouper(freq='1Y'))
     
     assert var.size == 5
     assert var.iloc[0] == timeResult1
-    assert var.iloc[1] == timeResult2
+    assert pd.isnull(var.iloc[1])
+    assert var.iloc[2] == datetime.timedelta(days=365)
+
+def test_aggregated_compute_time_no_group(log_for_time):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA, 
+        single_instance_agg_function='SUM')
+
+    var = measure_computer(aggregatedMeasure, log_for_time)
+
+    assert var == datetime.timedelta(days=1126, minutes=46, seconds =6)
+
+def test_derived_compute_time_condition(log_for_time):
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        first_to=True)
+    
+    derivedMeasure = DerivedMeasure("time < days366", 
+        {"time": timeMeasureLinearA,
+         "days366": pd.Timedelta(days=366)})
+
+    var = measure_computer(derivedMeasure, log_for_time)
+
+    assert var.size == 3
+    assert var.iloc[0]
+    assert var.iloc[1]
+    assert not var.iloc[2]
+
+def test_derived_aggregated_time(log_for_time):
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA, 
+        single_instance_agg_function='SUM')
+
+    derivedMeasure = DerivedMeasure("time < days366", 
+        {"time": aggregatedMeasure,
+         "days366": pd.Timedelta(days=366)})
+
+    var = measure_computer(derivedMeasure, log_for_time, time_grouper=pd.Grouper(freq='1Y'))
+
+    assert var.size == 5
+    assert np.all(var == [True, False, True, False, False])
+
 
 def test_count_compute():
     

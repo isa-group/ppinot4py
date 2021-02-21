@@ -1,12 +1,17 @@
-from .conditions_computer import condition_computer
+from ppinot4py.computers.conditions_computer import condition_computer
 from ppinot4py.model import (
     CountMeasure, 
     DataMeasure, 
     TimeMeasure, 
     AggregatedMeasure,
-    DerivedMeasure
+    DerivedMeasure    
 )
+from ppinot4py.model.measures import _MeasureDefinition
+
 import pandas as pd
+from pandas.api.types import is_datetime64_any_dtype as is_datetime
+from pandas.api.types import is_timedelta64_dtype as is_timedelta
+from pandas.api.types import is_numeric_dtype, is_bool_dtype
 import numpy as np
 from copy import copy
 import datetime
@@ -19,7 +24,7 @@ def measure_computer(measure, dataframe, id_case = 'case:concept:name', time_col
             - dataframe: Base dataframe we want to use.
             - id_case (optional): ID column of your dataframe (By default is 'case:concept:name').
             - time_column (optional): Timestamp column of your dataframe (By default is 'time:timestamp').
-            - time_grouper (optional): Time grouper (https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html)
+            - time_grouper (optional): Time grouper (https://pandas.pydata.org/docs/user_guide/timeseries.html)
                 without the key. If the measure is aggregated, it groups the result by instance end time
 
             
@@ -40,7 +45,7 @@ def measure_computer(measure, dataframe, id_case = 'case:concept:name', time_col
         if(type(measure) == AggregatedMeasure):
             computer = aggregated_compute(dataframe, measure, id_case, time_column, time_grouper)
         if(type(measure) == DerivedMeasure):
-            computer = derived_compute(dataframe, measure, id_case, time_column)
+            computer = derived_compute(dataframe, measure, id_case, time_column, time_grouper)
         return computer
     except ValueError as err:
         return f"ERROR: A value in the measure wasn't correctly defined: ({err})"
@@ -154,12 +159,12 @@ def _cyclic_time_compute(dataframeToWork, A_condition, B_condition, operation, i
     return result.apply(lambda x: datetime.timedelta(seconds = x))    
 
 def _apply_aggregation(operation, grouped_df):
-    
+
     if not isinstance(operation, str):
         raise ValueError('Aggregation function must be a string: sum, min, max, avg or groupby')
 
     if(operation.upper() == 'SUM'):
-        result = grouped_df.sum()
+        result = grouped_df.sum(min_count=1)
 
     elif(operation.upper() == "MIN"):
         result = grouped_df.min()
@@ -236,18 +241,21 @@ def aggregated_compute(dataframe, measure, id_case, time_column, time_grouper = 
     case_end = dataframe.groupby(id_case)[time_column].last()
     
     if((filter_to_apply is not None) and filter_to_apply != ""):
-        filter_condition = measure_computer(filter_to_apply, dataframe)
+        filter_condition = measure_computer(filter_to_apply, dataframe, id_case, time_column)
         # We assume the filtered_condition is fine. Maybe we could do
         # some sanity checking here.
         base_values = base_values[filter_condition]
         case_end = case_end[filter_condition]
 
-    # Time to calculate could also be configurable
-    internal_df = pd.DataFrame({'data':base_values, 'time_to_calculate':case_end})
+    # Case end could also be configurable
+    internal_df = pd.DataFrame({'data':base_values, 'case_end':case_end})
+
+    if not is_datetime(internal_df['case_end']):
+        internal_df['case_end'] = pd.to_datetime(internal_df['case_end'], utc=True)
     
-    if(internal_df['data'].dtype == 'timedelta64[ns]'):
-        internal_df['data_seconds'] = internal_df['data'].dt.total_seconds()
-        internal_df['data_seconds'] = internal_df['data_seconds'].fillna(0).astype(float)
+    if is_timedelta(internal_df['data'].dtype):
+        internal_df['data'] = internal_df['data'].dt.total_seconds()
+        #internal_df['data_seconds'] = internal_df['data_seconds'].fillna(0).astype(float)
         is_time = True
 
     groupers = []
@@ -261,14 +269,14 @@ def aggregated_compute(dataframe, measure, id_case, time_column, time_grouper = 
                 if gr_key is None:
                     gr_key = 'group' + str(len(groupers))
             
-                internal_df[gr_key] = measure_computer(gr, dataframe)
+                internal_df[gr_key] = measure_computer(gr, dataframe, id_case, time_column)
                 groupers.append(gr_key)
             else:
                 groupers.append(gr)
 
     if time_grouper is not None:
         internal_time_grouper = copy(time_grouper)
-        internal_time_grouper.key = 'time_to_calculate'
+        internal_time_grouper.key = 'case_end'
         groupers.append(internal_time_grouper)
 
     if len(groupers) > 0:
@@ -280,32 +288,47 @@ def aggregated_compute(dataframe, measure, id_case, time_column, time_grouper = 
 
     if(operation.upper() == "GROUPBY"):
         is_time = False
-    
-    if(is_time == True):
-        final_result = final_result['data_seconds'].apply(lambda x: datetime.timedelta(seconds = x) if not np.isnan(x) else np.nan)
+
+    if len(final_result) > 1:
+        if is_time == True:
+            final_result = final_result['data'].apply(lambda x: datetime.timedelta(seconds = x) if not np.isnan(x) else np.nan)
+
+        final_result = final_result.drop('case_end', axis=0, errors='ignore')
+    else:
+        if is_time == True:
+            final_result = datetime.timedelta(seconds = final_result['data'])
+        else:
+            final_result = final_result['data']
 
     return final_result
 
-def derived_compute(dataframe, measure, id_case, time_column):
+def derived_compute(dataframe, measure, id_case, time_column, time_grouper=None):
     
     function = measure.function_expression
     measure_map = measure.measure_map
     data_frame_computer = pd.DataFrame()
     istime = False
     
-    for key in measure_map:  
-        data_frame_computer[key] = measure_computer(measure_map[key], dataframe)
-        
-        if(data_frame_computer[key].dtype == 'timedelta64[ns]'):
+    for key in measure_map: 
+        if isinstance(measure_map[key], _MeasureDefinition):
+            data_frame_computer[key] = measure_computer(measure_map[key], dataframe, id_case, time_column, time_grouper)        
+        else:
+            data_frame_computer[key] = measure_map[key]
+
+        if(is_timedelta(data_frame_computer[key].dtype)):
             data_frame_computer[key] = data_frame_computer[key].dt.total_seconds()
-            data_frame_computer[key] = data_frame_computer[key].fillna(0).astype(float)
+            #data_frame_computer[key] = data_frame_computer[key].fillna(0).astype(float)
+
+            # If there is one time, we assume everything is time
             istime = True
   
     evaluated_dataframe = data_frame_computer.eval(function)
-    evaluated_dataframe_noInfinites = evaluated_dataframe.replace([np.inf, -np.inf], 0)
-    final_result = evaluated_dataframe_noInfinites.fillna(0).astype(float)
+    #evaluated_dataframe_noInfinites = evaluated_dataframe.replace([np.inf, -np.inf], 0)
+    #final_result = evaluated_dataframe_noInfinites.fillna(0).astype(float)
+
+    final_result = evaluated_dataframe
     
-    if(istime == True):
-        final_result = final_result.apply(lambda x: datetime.timedelta(seconds = x))
+    if istime and is_numeric_dtype(final_result.dtype) and not is_bool_dtype(final_result.dtype):
+        final_result = final_result.apply(lambda x: datetime.timedelta(seconds = x) if not np.isnan(x) else np.nan)
     
     return final_result
