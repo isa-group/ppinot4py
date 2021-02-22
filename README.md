@@ -1,35 +1,111 @@
 # What is PPINot4Py?
 
-PPINot4Py is a Python implementation of a [PPINot](https://github.com/isa-group/ppinot), used to compute process performance indicators (PPIs) for event log datasets in .XES or .CSV format.
+PPINot4Py is a Python implementation of a [PPINot](https://github.com/isa-group/ppinot), used to compute process performance indicators (PPIs) for event log datasets.
 
-The user can import the data from a CSV or from a .XES thanks to [pm4py library for mining](https://pm4py.fit.fraunhofer.de).
+* **A quick example**
+
+In the following example, we use the [Road Traffic Fine event log](https://data.4tu.nl/articles/dataset/Road_Traffic_Fine_Management_Process/12683249) to show how ppinot4py can be used to compute some PPIs. The log is in XES format, so we use [pm4py](http://pm4py.fit.fraunhofer.de/) to load it into a dataframe:
+
+``` python
+import ppinot4py
+from ppinot4py import model
+import pandas as pd
+import pm4py
+from pm4py.objects.conversion.log import converter as log_converter
+
+# Loads the event log
+log = pm4py.read_xes('Road_Traffic_Fine_Management_Process.xes')
+
+# Transforms the event log into a pandas dataframe
+df = log_converter.apply(log, variant=log_converter.Variants.TO_DATA_FRAME)
+
+# Converts the timestamp column into a timestamp
+df['time:timestamp'] = pd.to_datetime(df['time:timestamp'], utc=True)
+
+# Computes the time between activity Create Fine and activity Send Fine
+tm = model.TimeMeasure('`concept:name` == "Create Fine"', '`concept:name` == "Send Fine"')
+result = ppinot4py.measure_computer(tm, df)
+```
+
+The value of result is:
+
+``` python
+id
+A1       134 days 01:00:00
+A100     132 days 01:00:00
+A10000   129 days 23:00:00
+A10001   119 days 23:00:00
+A10004   118 days 23:00:00
+                ...       
+V9995     48 days 00:00:00
+V9996     48 days 00:00:00
+V9997     48 days 00:00:00
+V9998     48 days 00:00:00
+V9999     48 days 00:00:00
+Name: t, Length: 150370, dtype: timedelta64[ns]
+```
+
+We can also execute more complex metrics. For instance, we can get the percentage of cases in which the time between Create Fine and Send Fine is less than 90 days yearly grouped as follows:
+
+``` python
+create_to_send_fine_90_days= model.DerivedMeasure("create_to_send_fine < days90", 
+                                {"create_to_send_fine": tm, "days90": pd.Timedelta(days=90)})
+avg_create_to_send_fine_90_days = model.AggregatedMeasure(create_to_send_fine_90_days, 'avg')
+ppinot4py.measure_computer(avg_create_to_send_fine_90_days, df, time_grouper=pd.Grouper(freq='1Y'))
+```
+
+The result is:
+
+``` python
+	          data
+case_end	
+2000-12-31 00:00:00+00:00	0.370000
+2001-12-31 00:00:00+00:00	0.488830
+2002-12-31 00:00:00+00:00	0.781479
+2003-12-31 00:00:00+00:00	0.567777
+2004-12-31 00:00:00+00:00	0.401980
+2005-12-31 00:00:00+00:00	0.016107
+2006-12-31 00:00:00+00:00	0.087001
+2007-12-31 00:00:00+00:00	0.062628
+2008-12-31 00:00:00+00:00	0.254578
+2009-12-31 00:00:00+00:00	0.178580
+2010-12-31 00:00:00+00:00	0.367412
+2011-12-31 00:00:00+00:00	0.356082
+2012-12-31 00:00:00+00:00	0.460812
+2013-12-31 00:00:00+00:00	0.829418
+```
+
+This is just a small example of what can be done with ppinot4py. Next, you can find the details on how to use it.
 
 * **Basic imports to use the library:**
 ``` python
-from PPINot4Py.model import * #To define the measure model
-from PPINot4Py import measure_computer #To perform the calculations
+from ppinot4py.model import * #To define the measure model
+from ppinot4py import measure_computer #To perform the calculations
 ```
+
 
 ## Conditions
 
-Measures need conditions to specify when to count or when to start or stop measuring time. In PPINot4Py, you will be able to choose between 2 different ways of specifying these conditions.
+Measures need conditions to specify when to count or when to start or stop measuring time. In ppinot4py, you can specify these conditions in 2 different ways.
 
 **1.- TimeInstant Condition:**
 ```python
-countStateCount = DataObjectState("lifecycle:transition == 'Closed'")
+countStateCount = DataObjectState("`concept:name` == 'Close'")
 countConditionCount = TimeInstantCondition(countStateCount)
 countMeasureCount = CountMeasure(countConditionCount)
 ```
 or simply
 
 ```python
-countMeasureExample = CountMeasure('lifecycle:transition == "Closed"')
+countMeasureExample = CountMeasure('`concept:name` == "Close"')
 ```
 
-A TimeInstantCondition is True when the conditions changes from (!condition) -> (condition), so if we are filtering with "A", and we have this secuence: A B A A A, the result will be True, False, True, False False
+A TimeInstantCondition is True when the conditions changes in the event log from (!condition) -> (condition), so if our condition is "`concept:name`==A", and we have this secuence: A B A A A, the result will be True, False, True, False False.
+
+The expression language that can be used to specify the condition is the same that can be used in [pandas DataFrame.query()](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.query.html).
 
 **2.- Series Condition**
-It is also possible to directly give the program a Serie with the calculated Boolean values.
+It is also possible to directly give the program a pandas Series with the calculated Boolean values.
 
 ## Measure computer
 
@@ -41,11 +117,9 @@ def measure_computer(measure, dataframe,
                     time_column = 'time:timestamp',
                     time_grouper = None):
 ```
-By default, _id_case_ and _time_column_ will have the standard name for those columns, in case the user have custom names for these columns, they must be indicated.
+By default, _id_case_ and _time_column_ will have the standard name for those columns as specified by the XES standard. In case the user have custom names for these columns, they must be indicated.
 
-Time grouper is a [pandas Grouper object](https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases) 
-that indicates how to group the results of an aggregated measure based
-on the time each case finishes. 
+Time grouper is a [pandas Grouper object](https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases) that indicates how to group the results of an aggregated measure based on the time each case finishes. 
 
 ## Measures 
 
@@ -63,7 +137,7 @@ With this computer we will be abble to count how many times occurs in each ID of
 Example: For a certain dataset and the following condition:
 
 ``` python
-countState = DataObjectState('lifecycle:transition == "In Progress"')
+countState = DataObjectState('concept:name == "In Progress"')
 countCondition = TimeInstantCondition(countState)
 countMeasure = CountMeasure(countCondition)
 
@@ -89,12 +163,10 @@ Length: 7554, dtype: float64
 ### Data measure
 
 A Data Measure is composed of 3 values:
-
 * data_content_selection: Column you want to select.
-
 * Precondition: Condition you want to apply to the dataset, can be TimeInstantCondition, Series or String.
-
 * First: Boolean value, if is true, it will take the first filtered value of each ID, if is false, will take the last value.
+
 ``` python
 class DataMeasure():
     
@@ -105,18 +177,18 @@ class DataMeasure():
         self.first = first
 ```
 
-With this computer, you will be able to obtain a specific value of your dataset for each ID.
+With this measure type, you will be able to obtain a specific value of your event log for each ID.
 
 Example: For a certain dataset and the following condition:
 
 ``` python
 countState = DataObjectState("org:group == 'V5 3rd'")
-condition = TimeInstantCondition(countState)
-dataMeasure = DataMeasure("lifecycle:transition", condition, True)
+precondition = TimeInstantCondition(countState)
+dataMeasure = DataMeasure("lifecycle:transition", precondition, True)
 
 measure_computer(dataMeasure, dataframe)
 ```
-We obtain:
+We obtain the value of lifecycle:transition for those cases where the precondition is met:
 
 ``` python
 case_concept_name
@@ -131,17 +203,17 @@ A Time Measure is composed of 6 attributes:
 
 * **from_condition:** The starter condition where we want to count we will reffer to it as '_A_', it can be a TimeInstantCondition, a Series or a String
 * **to_condition:** The final condition, we will refer to ir as '_B_' it can be a TimeInstantCondition, a Series or a String
-* **time_measure_type:** Linear or Cyclic. By defect is Linear
-  * **Linear:** Count the time elapsed between _A_ and _B_
-  * **Cyclic:** Count the time elapsed between all the aparitions of pairs of _A_ and _B_
-* **single_instance_agg_function:** Type of operation we want to apply to our data, it only works with Cyclic Measure. By defect is SUM. There are 5 tipes of operations:
-  * **SUM:** The sum of all _A_ to _B_ apparitions
+* **time_measure_type:** Linear or Cyclic. By default is Linear
+  * **Linear:** Count the time elapsed between the first _A_ and the last _B_
+  * **Cyclic:** Count the time elapsed between all pairs of _A_ and _B_
+* **single_instance_agg_function:** Type of operation we want to apply to our data, it only works with Cyclic Measure. By default is SUM. There are 5 tipes of operations:
+  * **SUM:** The sum of all _A_ to _B_ pairs
   * **MIN:** Minimum time value between the _A_ to _B_ pairs
   * **MAX:** Maximum time value between the _A_ to _B_ pairs
-  * **AVG:** The average of all _A_ to _B_ apparitions
+  * **AVG:** The average time between all _A_ to _B_ pairs
   * **GROUPBY:** Raw grouped dataframe with no operation applied
-* **first_to:** Only works with Linear measure, indicate if we want to take the first appareance of 'B' condition or the last. By defect is False
-* **precondition:** Condition applied before the calculation of A and B appareances.
+* **first_to:** Only works with Linear measure and it indicates if we want to take the first occurrence of 'B' condition or the last. By default is False
+* **precondition:** Condition applied before the calculation of A and B.
 ``` python
 class TimeMeasure():
 
@@ -156,7 +228,7 @@ class TimeMeasure():
         self.precondition = precondition
         self.first_to = first_to
 ```
-**In this Linear example, we want to calculate how much time has passed between the apparition of 'In progress' to the last 'Closed'**
+**In this Linear example, we want to calculate how much time has passed between 'In progress' and the last 'Closed'**
 ``` python
 state_A = DataObjectState('lifecycle:transition == "In Progress"')
 condition_A = TimeInstantCondition(state_A)
@@ -184,7 +256,7 @@ case_concept_name
 Name: data, Length: 4904, dtype: timedelta64[ns]
 ```
 
-**In this Cyclic example, we want to calculate the average time of the apparitions of pairs 'In Progress' - 'Awaiting Assignment' along all Ids:**
+**In this Cyclic example, we want to calculate the average time of all pairs 'In Progress' - 'Awaiting Assignment' along all Ids:**
 
 ``` python
 state_A = DataObjectState.DataObjectState('lifecycle:transition == "In Progress"')
@@ -218,7 +290,6 @@ Name: data, Length: 3669, dtype: timedelta64[ns]
 An Aggregated Measure is composed of:
 
 * **base_measure:** Can be any kind of the previous measures (Time, Count or Data)
-* **filter_to_apply:** Filter to apply to the base_measure, can be TimeInstantCondition, Series or String
 * **single_instance_agg_function:** Operation we want to apply to data of each Time aggrupation
   * **SUM:** Sum of all values
   * **MIN:** Minimum value
@@ -226,11 +297,12 @@ An Aggregated Measure is composed of:
   * **AVG:** Average of all values
   * **GROUPBY:** Raw grouped dataframe with no operation applied
 * **data_grouper:** List of Measures to group by the base measure.
+* **filter_to_apply:** Filter to apply to the base_measure, can be TimeInstantCondition, Series or String
 
 ``` python
-class aggregatedMeasure():
+class AggregatedMeasure():
 
-    def __init__(self, base_measure, filter_to_apply,  single_instance_agg_function, data_grouper):
+    def __init__(self, base_measure, single_instance_agg_function, data_grouper, filter_to_apply):
   
         self.base_measure = base_measure
         self.filter_to_apply = filter_to_apply
@@ -254,7 +326,7 @@ condition_B = TimeInstantCondition(state_B)
 time_measure = TimeMeasure(condition_A, condition_B)
 
 time_grouper_60s = pd.Grouper(freq='60s')
-aggregated_measure = AggregatedMeasure(time_measure, '', 'SUM')
+aggregated_measure = AggregatedMeasure(time_measure, 'SUM')
 
 measure_computer(aggregated_measure, dataframe, time_grouper=time_grouper_60s)
 ```
@@ -276,10 +348,9 @@ Freq: 60S, Name: data_seconds, Length: 31285, dtype: timedelta64[ns]
 
 **We can group it for example in intervals of 2 weeks**
 ``` python
-time_grouper_2W = pd.Grouper(freq='2W')
-aggregated_measure = AggregatedMeasure(time_measure, '', 'SUM')
+aggregated_measure = AggregatedMeasure(time_measure, 'SUM')
 
-measure_computer(aggregated_measure, dataframe, time_grouper=time_grouper_2W)
+measure_computer(aggregated_measure, dataframe, time_grouper=pd.Grouper(freq='2W'))
 ```
 ``` ruby
 time_to_calculate
@@ -293,20 +364,19 @@ Freq: 2W-SUN, Name: data_seconds, dtype: timedelta64[ns]
 
 A Derived Measure is composed of 2 attributes:
 
-* **function_expression:** Function that we want to apply to some measures. Can be arithmetical or logical
-
+* **function_expression:** Function that we want to apply to some measures. Can be arithmetical or boolean
   * Example: (A + B) / C where A,B and C are the result of a previous computer
 * **measure_map:** A dictionary where the Key values are the name we want to assign to that measure, and the values the measure
 
 ``` python
-class derivedMeasure():
+class DerivedMeasure():
     
     def __init__(self, function_expression, measure_map):
       
         self.function_expression = function_expression
         self.measure_map = measure_map
 ```
-With this Computer, we will be able to apply arithmetical of logial functions to a group of Computer results.
+With this Computer, we will be able to apply arithmetical of boolean functions to a group of Computer results.
 
 We define 3 Linear Measures, create the dictionary and then we define the function
 ``` python
@@ -335,4 +405,21 @@ case_concept_name
 1-740865953   0 days 00:32:46.345588
 1-740865969   0 days 00:53:39.253012
 Length: 4904, dtype: timedelta64[ns]
+```
+
+One can also use derived measures to define boolean expressions. For instance, we can define a boolean derived measure that returns true when the number of Send Fine activities in a case is greater or equal than 1.
+
+``` python
+has_send_fine = model.DerivedMeasure('count_send_fine >= 1',
+    {"count_send_fine": model.CountMeasure('`concept:name` == "Send Fine"')})
+ppinot4py.measure_computer(has_send_fine, df)
+```
+
+If the data type used in the comparison is an object, then it has to be added as a parameter in the expression and in the measure map. For instance, in the following example, we define _days90_ with the value _pd.Timedelta(days=90)_:
+
+``` python
+create_fine_to_send_fine = model.TimeMeasure('`concept:name` == "Create Fine"', '`concept:name` == "Send Fine"')
+create_to_send_fine_90_days= model.DerivedMeasure("create_to_send_fine < days90", 
+                                    {"create_to_send_fine":   create_fine_to_send_fine, "days90": pd.Timedelta(days=90)})
+ppinot4py.measure_computer(avg_create_to_send_fine_90_days, df, time_grouper=pd.Grouper(freq='1Y'))
 ```
