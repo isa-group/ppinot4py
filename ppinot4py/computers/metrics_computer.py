@@ -80,7 +80,7 @@ def time_compute(dataframe, measure, id_case, time_column):
     is_first = measure.first_to
 
     # Initial precondition
-    if(precondition != ""):
+    if(precondition is not None):
         filtered_dataframe = dataframe.query(precondition)
     else:
         filtered_dataframe = dataframe
