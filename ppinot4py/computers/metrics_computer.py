@@ -300,7 +300,7 @@ def aggregated_compute(dataframe, measure, id_case, time_column, time_grouper = 
         #final_result = final_result.drop('case_end', axis=0, errors='ignore')
     else:
         if is_time == True:
-            final_result = datetime.timedelta(seconds = final_result['data']) if not np.isnan(x) else np.nan
+            final_result = datetime.timedelta(seconds = final_result['data']) if not np.isnan(final_result['data']) else np.nan
         else:
             final_result = final_result['data']
 
