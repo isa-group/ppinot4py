@@ -2,18 +2,35 @@
 from .states import DataObjectState
 import enum
 
-class DataCondition():
-    def __init__(self, applies_to):
-        self.applies_to = applies_to
-
-    def __repr__(self):
-        return "%s" % (self.applies_to)
-
 class AppliesTo(enum.Enum):
     PROCESS = 1
     DATA = 2
+
+class DataCondition():
+    """
+        Evaluates to true for all events whose attributes meet the condition.
+
+        Parameters
+        ----------
+        condition : state or str
+            The condition that is evaluated in each event.
+        applies_to : AppliesTo (default DATA)
+            The element of the process to which condition applies.
+    """
+    def __init__(self, condition, applies_to=AppliesTo.DATA):
+        if isinstance(condition, str):
+            condition = DataObjectState(condition)
+
+        self.condition = condition
+        self.applies_to = applies_to
+
+    def __repr__(self):
+        return f"{self.condition} - {self.applies_to}"
+
 class TimeInstantCondition():
-    """When condition passes from !condition to condition.
+    """
+    Evaluates to true for all events whose attribute change from
+    !condition to condition.
     
     Parameters
     ----------
