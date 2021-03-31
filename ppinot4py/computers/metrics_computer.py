@@ -60,11 +60,14 @@ def count_compute(dataframe, measure, id_case):
 
 def data_compute(dataframe, measure, id_case):
     precondition = (measure.precondition)
-    filtered_series = condition_computer(dataframe, id_case, precondition)
+    if precondition is not None:
+        filtered_series = condition_computer(dataframe, id_case, precondition)
+        final_dataframe = dataframe[filtered_series]
+    else:
+        final_dataframe = dataframe
     
-    final_dataframe = dataframe[filtered_series]
    
-    if(measure.first):
+    if measure.first:
         result = final_dataframe.groupby(id_case)[measure.data_content_selection].first()
     else:
         result = final_dataframe.groupby(id_case)[measure.data_content_selection].last()

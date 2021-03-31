@@ -48,7 +48,7 @@ class DataMeasure(_MeasureDefinition):
     Args:
     
             - data_content_selection: Column you want to select
-            - precondition: Filter to apply to data
+            - precondition: Condition (Time Instance Condition by default) to apply to data
             - first: True if you want to select first data, False if you want to select last
     """
     

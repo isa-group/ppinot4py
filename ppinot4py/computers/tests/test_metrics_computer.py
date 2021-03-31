@@ -146,6 +146,23 @@ def test_count_compute_instances():
 def test_data_computer():
     
     dataMeasure = DataMeasure(
+        data_content_selection="lifecycle:transition", 
+        first=False)
+
+    IdCase1 = '1-364285768'
+    
+    data = {'case:concept:name': [IdCase1, IdCase1, IdCase1], 
+            'concept:name': ['Queued', 'Queued', 'Not queued'],
+            'lifecycle:transition': ['In Progress', 'Awaiting Assignment','Completed']}
+            
+    dataframeLinear = pd.DataFrame(data)
+    result = measure_computer(dataMeasure, dataframeLinear)
+
+    assert result.iloc[0] == 'Completed'
+
+def test_data_computer_precondition():
+    
+    dataMeasure = DataMeasure(
         precondition="`concept:name` == 'Queued'", 
         data_content_selection="lifecycle:transition", 
         first=False)

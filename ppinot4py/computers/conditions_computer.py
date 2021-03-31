@@ -3,6 +3,9 @@ import pandas as pd
 
 def condition_computer(dataframe, id_case, condition):
 
+    if condition is None:
+        filteredSeries = dataframe
+        
     if(type(condition) == str):
         dataframeValue = dataframe.query(condition)
         filteredArray = dataframe.index.isin(dataframeValue.index)
