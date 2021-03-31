@@ -128,7 +128,7 @@ class AggregatedMeasure(_MeasureDefinition):
         self.single_instance_agg_function = single_instance_agg_function
         if grouper is None:
             self.grouper = []
-        elif isinstance(grouper, str):
+        elif isinstance(grouper, _MeasureDefinition):
             self.grouper = [grouper]
         else:
             self.grouper = grouper
@@ -136,7 +136,7 @@ class AggregatedMeasure(_MeasureDefinition):
     def __str__(self):
         result =  f"the {_name_of_aggregation(self.single_instance_agg_function)} of {self.base_measure}"
         if len(self.grouper) > 0:
-            grouper_text = ", ".join(self.grouper)
+            grouper_text = ", ".join([f"{g}" for g in self.grouper])
             result = f"{result} grouped by {grouper_text}"
         if self.filter_to_apply is not None:
             result = f"{result} filtered by {self.filter_to_apply}"

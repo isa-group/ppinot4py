@@ -14,8 +14,8 @@ def test_data_text():
 
 def test_aggregated_text():
     c = CountMeasure("ACT == 'open'")
-    a = AggregatedMeasure(c, 'AVG', ['PROJECT'])
-    assert f"{a}" == "the average of the number of times ACT == 'open' grouped by PROJECT"
+    a = AggregatedMeasure(c, 'AVG', DataMeasure('PROJECT'))
+    assert f"{a}" == "the average of the number of times ACT == 'open' grouped by the last value of PROJECT"
 
 def test_derived_text():
     c = CountMeasure("ACT == 'open'")

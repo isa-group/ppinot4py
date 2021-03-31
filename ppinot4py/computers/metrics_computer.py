@@ -48,7 +48,7 @@ def measure_computer(measure, dataframe, id_case = 'case:concept:name', time_col
             computer = derived_compute(dataframe, measure, id_case, time_column, time_grouper)
         return computer
     except ValueError as err:
-        return f"ERROR: A value in the measure wasn't correctly defined: ({err})"
+        raise ValueError("ERROR: A value in the measure wasn't correctly defined") from err
 
 
 def count_compute(dataframe, measure, id_case):
@@ -295,11 +295,12 @@ def aggregated_compute(dataframe, measure, id_case, time_column, time_grouper = 
     if len(final_result) > 1:
         if is_time == True:
             final_result = final_result['data'].apply(lambda x: datetime.timedelta(seconds = x) if not np.isnan(x) else np.nan)
-
-        final_result = final_result.drop('case_end', axis=0, errors='ignore')
+        else:
+            final_result = final_result['data']
+        #final_result = final_result.drop('case_end', axis=0, errors='ignore')
     else:
         if is_time == True:
-            final_result = datetime.timedelta(seconds = final_result['data'])
+            final_result = datetime.timedelta(seconds = final_result['data']) if not np.isnan(x) else np.nan
         else:
             final_result = final_result['data']
 
