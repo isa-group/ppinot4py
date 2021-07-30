@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="ppinot4py", 
-    version="1.1.3",
+    version="1.1.4",
     author="ISA Group",
     author_email="resinas@us.es",
     description="PPINOT for Python (ppinot4py)",
