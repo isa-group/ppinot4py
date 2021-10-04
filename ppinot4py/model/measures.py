@@ -79,11 +79,16 @@ class TimeMeasure(_MeasureDefinition):
             - precondition: Filter to previusly apply to our dataset. Note that, in this case, this precondition
                             is not a time instant condition, but a data condition (i.e., it is directly checked with
                             the values of the attributes of each event)
+            - business_start: When the working time starts
+            - business_end: When the working time edns
+            - weekend_list: Wich days are weekend
+            - holiday_list: List of holidays, can be custom or one of the predefined in the list of businessDuration library
+            - unit_hour: The unit of time
     """
 
     def __init__(self, from_condition, to_condition, 
                     time_measure_type = 'LINEAR', single_instance_agg_function = 'SUM', 
-                         first_to = False, precondition = None):
+                         first_to = False, precondition = None, business_start = None, business_end = None, weekend_list = None, holiday_list = None, unit_hour = None):
         super().__init__()
   
         self.from_condition = _time_instance_auto_wrap(from_condition)
@@ -92,6 +97,11 @@ class TimeMeasure(_MeasureDefinition):
         self.single_instance_agg_function = single_instance_agg_function
         self.precondition = precondition
         self.first_to = first_to
+        self.business_start = business_start
+        self.business_end = business_end
+        self.weekend_list = weekend_list
+        self.holiday_list = holiday_list
+        self.unit_hour = unit_hour
 
     def __repr__(self):
         return f"TimeMeasure ( from={self.from_condition}, to={self.to_condition} )"
