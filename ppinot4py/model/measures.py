@@ -88,7 +88,7 @@ class TimeMeasure(_MeasureDefinition):
 
     def __init__(self, from_condition, to_condition, 
                     time_measure_type = 'LINEAR', single_instance_agg_function = 'SUM', 
-                         first_to = False, precondition = None, business_start = None, business_end = None, weekend_list = None, holiday_list = None, unit_hour = None):
+                         first_to = False, precondition = None, business_duration = None):
         super().__init__()
   
         self.from_condition = _time_instance_auto_wrap(from_condition)
@@ -97,12 +97,8 @@ class TimeMeasure(_MeasureDefinition):
         self.single_instance_agg_function = single_instance_agg_function
         self.precondition = precondition
         self.first_to = first_to
-        self.business_start = business_start
-        self.business_end = business_end
-        self.weekend_list = weekend_list
-        self.holiday_list = holiday_list
-        self.unit_hour = unit_hour
-
+        self.business_duration = business_duration
+        
     def __repr__(self):
         return f"TimeMeasure ( from={self.from_condition}, to={self.to_condition} )"
 
@@ -173,3 +169,15 @@ class DerivedMeasure(_MeasureDefinition):
         variables = ", ".join([f"{m} is {self.measure_map[m]}" for m in self.measure_map])
 
         return f"the function {self.function_expression} where {variables}"
+
+class BusinessDuration():
+    
+    def __init__(self, business_start, business_end, weekend_list, holiday_list, unit_hour):
+
+        self.business_start = business_start
+        self.business_end = business_end
+        self.weekend_list = weekend_list
+        self.holiday_list = holiday_list
+        self.unit_hour = unit_hour
+ 
+        
