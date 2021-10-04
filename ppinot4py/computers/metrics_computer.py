@@ -121,7 +121,7 @@ def _linear_time_compute(dataframeToWork, from_condition, to_condition, is_first
         finalDataframeB = dataframeToWork[to_condition]        
         to_values = finalDataframeB.groupby(id_case)[time_column].last()
     
-    final_result = _linear_calculation(from_values, to_values, finalDataframeB, measure)
+    final_result = _linear_calculation(from_values, to_values, measure)
 
     return final_result
 
@@ -140,7 +140,7 @@ def _first_to_after_from(from_condition, to_condition, id_values, ts_values):
     # Returns the first of them
     return df.groupby('id')['t'].first()
 
-def _linear_calculation(fromValues, toValues, finalDataframeB, measure):
+def _linear_calculation(fromValues, toValues, measure):
     
     # Hour, min and second of start and close hour
 
