@@ -197,11 +197,17 @@ def _cyclic_time_compute(dataframeToWork, A_condition, B_condition, operation, i
     if(measure.unit_hour == None):
         diff = diff.dt.total_seconds()
 
-    grouped_diff = diff.groupby(dataframeToWork[id_case])
-
-    result = _apply_aggregation(operation, grouped_diff)
+        grouped_diff = diff.groupby(dataframeToWork[id_case])
+        result = _apply_aggregation(operation, grouped_diff)
         
-    return result.apply(lambda x: datetime.timedelta(hours = x))    
+        return result.apply(lambda x: datetime.timedelta(seconds = x))  
+    else:
+
+        grouped_diff = diff.groupby(dataframeToWork[id_case])
+        result = _apply_aggregation(operation, grouped_diff)
+
+        return result.apply(lambda x: datetime.timedelta(hours = x))    
+    
 
 def _apply_aggregation(operation, grouped_df):
 
