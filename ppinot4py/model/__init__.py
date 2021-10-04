@@ -29,7 +29,7 @@ __all__ = [
     'DataMeasure',
     'AggregatedMeasure',
     'DerivedMeasure',
-    'BusinessDuration'
+    'BusinessDuration',
     'DataObjectState',
     'RuntimeState'
 ]
