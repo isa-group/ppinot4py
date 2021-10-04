@@ -79,11 +79,7 @@ class TimeMeasure(_MeasureDefinition):
             - precondition: Filter to previusly apply to our dataset. Note that, in this case, this precondition
                             is not a time instant condition, but a data condition (i.e., it is directly checked with
                             the values of the attributes of each event)
-            - business_start: When the working time starts
-            - business_end: When the working time edns
-            - weekend_list: Wich days are weekend
-            - holiday_list: List of holidays, can be custom or one of the predefined in the list of businessDuration library
-            - unit_hour: The unit of time
+            - business_duration: Business days specifications
     """
 
     def __init__(self, from_condition, to_condition, 
@@ -170,10 +166,11 @@ class DerivedMeasure(_MeasureDefinition):
 
         return f"the function {self.function_expression} where {variables}"
 
-class BusinessDuration():
+class BusinessDuration(_MeasureDefinition):
     
     def __init__(self, business_start, business_end, weekend_list, holiday_list, unit_hour):
-
+        super().__init__()
+        
         self.business_start = business_start
         self.business_end = business_end
         self.weekend_list = weekend_list
