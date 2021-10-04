@@ -145,7 +145,7 @@ def _linear_calculation(fromValues, toValues, measure):
     
     # Hour, min and second of start and close hour
 
-    if(measure.business_duration.unit_hour != None):
+    if(measure.business_duration != None):
         open_time= measure.business_duration.business_start
         close_time= measure.business_duration.business_end
         
@@ -195,7 +195,7 @@ def _cyclic_time_compute(dataframeToWork, A_condition, B_condition, operation, i
 
     # This is necessary because sum() is not allowed in TimeDeltas
 
-    if(measure.business_duration.unit_hour == None):
+    if(measure.business_duration == None):
         diff = diff.dt.total_seconds()
 
         grouped_diff = diff.groupby(dataframeToWork[id_case])
@@ -256,7 +256,7 @@ def _compute_cyclic_diff(from_condition, to_condition, id_case, timestamps, meas
 
     pair = (df['c']=='A')
 
-    if(measure.business_duration.unit_hour != None):
+    if(measure.business_duration != None):
         open_time= measure.business_duration.business_start
         close_time= measure.business_duration.business_end
         
