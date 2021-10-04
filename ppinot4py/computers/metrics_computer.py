@@ -4,7 +4,8 @@ from ppinot4py.model import (
     DataMeasure, 
     TimeMeasure, 
     AggregatedMeasure,
-    DerivedMeasure    
+    DerivedMeasure,
+    BusinessDuration    
 )
 from ppinot4py.model.measures import _MeasureDefinition
 
@@ -144,14 +145,14 @@ def _linear_calculation(fromValues, toValues, measure):
     
     # Hour, min and second of start and close hour
 
-    if(measure.unit_hour != None):
-        open_time= measure.business_start
-        close_time= measure.business_end
+    if(measure.business_duration.unit_hour != None):
+        open_time= measure.business_duration.business_start
+        close_time= measure.business_duration.business_end
         
         # List of holidays
-        holiday_list = measure.holiday_list
-        unit_hour= measure.unit_hour
-        weekend_list = measure.weekend_list
+        holiday_list = measure.business_duration.holiday_list
+        unit_hour= measure.business_duration.unit_hour
+        weekend_list = measure.business_duration.weekend_list
 
         fromValues.name = 'start'
         toValues.name = 'end'
@@ -194,7 +195,7 @@ def _cyclic_time_compute(dataframeToWork, A_condition, B_condition, operation, i
 
     # This is necessary because sum() is not allowed in TimeDeltas
 
-    if(measure.unit_hour == None):
+    if(measure.business_duration.unit_hour == None):
         diff = diff.dt.total_seconds()
 
         grouped_diff = diff.groupby(dataframeToWork[id_case])
@@ -255,14 +256,14 @@ def _compute_cyclic_diff(from_condition, to_condition, id_case, timestamps, meas
 
     pair = (df['c']=='A')
 
-    if(measure.unit_hour != None):
-        open_time= measure.business_start
-        close_time= measure.business_end
+    if(measure.business_duration.unit_hour != None):
+        open_time= measure.business_duration.business_start
+        close_time= measure.business_duration.business_end
         
         # List of holidays
-        holiday_list = measure.holiday_list
-        unit_hour= measure.unit_hour
-        weekend_list = measure.weekend_list
+        holiday_list = measure.business_duration.holiday_list
+        unit_hour= measure.business_duration.unit_hour
+        weekend_list = measure.business_duration.weekend_list
         
         final = pd.DataFrame()
 
