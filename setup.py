@@ -24,7 +24,6 @@ setuptools.setup(
         'pandas',
         'numpy',
         'business-duration',
-        'holidays',
-        'itertools'
+        'holidays'
     ]
 )
