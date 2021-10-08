@@ -166,9 +166,9 @@ class DerivedMeasure(_MeasureDefinition):
 
         return f"the function {self.function_expression} where {variables}"
 
-class BusinessDuration(_MeasureDefinition):
+class BusinessDuration():
     
-    def __init__(self, business_start, business_end, weekend_list, holiday_list, unit_hour):
+    def __init__(self, business_start, business_end, weekend_list=[5,6], holiday_list=None, unit_hour='min'):
         super().__init__()
         
         self.business_start = business_start

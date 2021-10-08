@@ -23,7 +23,6 @@ setuptools.setup(
     install_requires=[
         'pandas',
         'numpy',
-        'business-duration',
-        'holidays'
+        'business-duration'
     ]
 )

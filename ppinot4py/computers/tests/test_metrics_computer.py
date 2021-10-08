@@ -1,5 +1,7 @@
 from ppinot4py.model import *
 from ppinot4py.computers import *
+from datetime import time
+import holidays as pyholidays
 import datetime
 import pandas as pd
 import pytest
@@ -443,3 +445,191 @@ def test_derived_instances():
     var = measure_computer(derived_measure, dataframeLinear)
     
     assert var[0] == time_result
+
+
+def test_time_linear_instances_businessDuration_from_7_to_17():
+
+    business = BusinessDuration(
+        business_start = time(7,0,0),
+        business_end = time(17,0,0),
+        weekend_list = [5,6],
+        holiday_list = pyholidays.ES(prov ='AN'),
+        unit_hour = 'sec'
+    )
+    
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"', 
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        first_to=True,
+        business_duration = business)
+    
+    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
+    time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
+    time3 = datetime.datetime(2010, 4, 6, 16, 44, 7)
+    
+    IdCase1 = '1-364285768'
+    
+    timeResult = 18
+    
+    data = {'case:concept:name':[IdCase1, IdCase1, IdCase1], 
+            'time:timestamp': [time1, time2, time3],
+            'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress']}
+            
+    dataframeLinear = pd.DataFrame(data)
+    var = measure_computer(timeMeasureLinearA, dataframeLinear).iloc[0]
+    assert var == timeResult
+
+def test_time_linear_instances_businessDuration_from_7_to_17_severalFrom():
+
+    business = BusinessDuration(
+        business_start = time(7,0,0),
+        business_end = time(17,0,0),
+        weekend_list = [5,6],
+        holiday_list = pyholidays.ES(prov ='AN'),
+        unit_hour = 'sec'
+    )
+    
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"', 
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        first_to=False,
+        business_duration = business)
+    
+    IdCase1 = '1-364285768'
+    
+    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
+    time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
+    time3 = datetime.datetime(2010, 4, 6, 16, 44, 7)
+    time4 = datetime.datetime(2012, 4, 6, 16, 44, 7)
+    time5 = datetime.datetime(2012, 5, 6, 16, 44, 7)
+    time6 = datetime.datetime(2012, 6, 6, 16, 44, 7)
+
+    timeResult = 18 
+    
+    data = {'case:concept:name':[IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase1], 
+            'time:timestamp': [time1, time2, time3, time4, time5, time6],
+            'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'In Progress', 'In Progress', 'In Progress' ]}
+    
+    dataframeLinear = pd.DataFrame(data)
+    var = measure_computer(timeMeasureLinearA, dataframeLinear).iloc[0]
+    assert var == timeResult
+
+def test_time_cyclic_SumInstances_businessDuration():
+    
+    business = BusinessDuration(
+        business_start = time(7,0,0),
+        business_end = time(17,0,0),
+        weekend_list = [5,6],
+        holiday_list = pyholidays.ES(prov ='AN'),
+        unit_hour = 'hour'
+    )
+    
+    timeMeasureCyclic = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"', 
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        single_instance_agg_function='SUM',
+        time_measure_type='CYCLIC',
+        business_duration = business)
+    
+    IdCase1 = '1-364285768'
+    IdCase2 = '2-364285768'
+    
+    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
+    time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
+    time3 = datetime.datetime(2010, 4, 6, 16, 44, 7)
+    time4 = datetime.datetime(2012, 4, 6, 16, 44, 7)
+    time5 = datetime.datetime(2012, 5, 1, 16, 44, 7)
+    time6 = datetime.datetime(2012, 5, 2, 16, 44, 7)
+    time7 = datetime.datetime(2012, 5, 3, 16, 44, 7)
+    time8 = datetime.datetime(2012, 6, 6, 16, 44, 7)
+    
+    timeResult = datetime.timedelta(days=209, hours=14, seconds=18) 
+    
+    data = {'case:concept:name':[IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase2, IdCase1], 
+            'time:timestamp': [time1, time2, time3, time4, time5, time6, time7, time8],
+            'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment']}
+    
+    dataframeLinear = pd.DataFrame(data)
+    var = measure_computer(timeMeasureCyclic, dataframeLinear).iloc[0]
+    
+    assert var == timeResult
+
+def test_time_cyclic_MaxInstances_businessDuration():
+
+    business = BusinessDuration(
+        business_start = time(7,0,0),
+        business_end = time(17,0,0),
+        weekend_list = [5,6],
+        holiday_list = pyholidays.ES(prov ='AN'),
+        unit_hour = 'hour'
+    )
+    
+    timeMeasureCyclic = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"', 
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        single_instance_agg_function='MAX',
+        time_measure_type='CYCLIC',
+        business_duration = business)
+    
+    IdCase1 = '1-364285768'
+    IdCase2 = '2-364285768'
+    
+    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
+    time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
+    time3 = datetime.datetime(2010, 4, 6, 16, 44, 7)
+    time4 = datetime.datetime(2012, 4, 6, 16, 44, 7)
+    time5 = datetime.datetime(2012, 5, 1, 16, 44, 7)
+    time6 = datetime.datetime(2012, 5, 2, 16, 44, 7)
+    time7 = datetime.datetime(2012, 5, 3, 16, 44, 7)
+    time8 = datetime.datetime(2012, 6, 6, 16, 44, 7)
+    
+    timeResult = datetime.timedelta(days=209, hours=4, minutes=15, seconds=53)  
+    
+    data = {'case:concept:name':[IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase2, IdCase1], 
+            'time:timestamp': [time1, time2, time3, time4, time5, time6, time7, time8],
+            'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment']}
+    
+    dataframeLinear = pd.DataFrame(data)
+    var = measure_computer(timeMeasureCyclic, dataframeLinear).iloc[0] 
+    
+    assert var == timeResult
+
+def test_time_cyclic_AVGInstances_businessDuration():
+
+    business = BusinessDuration(
+        business_start = time(7,0,0),
+        business_end = time(17,0,0),
+        weekend_list = [5,6],
+        holiday_list = pyholidays.ES(prov ='AN'),
+        unit_hour = 'hour'
+    )
+    
+    timeMeasureCyclic = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"', 
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        single_instance_agg_function='AVG',
+        time_measure_type='CYCLIC',
+        business_duration = business)
+    
+    IdCase1 = '1-364285768'
+    IdCase2 = '2-364285768'
+    
+    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
+    time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
+    time3 = datetime.datetime(2010, 4, 6, 16, 44, 7)
+    time4 = datetime.datetime(2012, 4, 6, 16, 44, 7)
+    time5 = datetime.datetime(2012, 5, 1, 16, 44, 7)
+    time6 = datetime.datetime(2012, 5, 2, 16, 44, 7)
+    time7 = datetime.datetime(2012, 5, 3, 16, 44, 7)
+    time8 = datetime.datetime(2012, 6, 6, 16, 44, 7)
+    
+    timeResult = datetime.timedelta(days=69, hours=20, minutes=40, seconds=6)   
+    
+    data = {'case:concept:name':[IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase2, IdCase1], 
+            'time:timestamp': [time1, time2, time3, time4, time5, time6, time7, time8],
+            'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment']}
+    
+    dataframeLinear = pd.DataFrame(data)
+    var = measure_computer(timeMeasureCyclic, dataframeLinear).iloc[0] 
+    
+    assert var == timeResult
