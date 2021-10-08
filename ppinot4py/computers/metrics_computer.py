@@ -22,8 +22,6 @@ import holidays as pyholidays
 from datetime import time
 from itertools import repeat
 
-from pandas.tseries.holiday import USFederalHolidayCalendar
-from pandas.tseries.offsets import CustomBusinessDay
 
 def measure_computer(measure, dataframe, id_case = 'case:concept:name', time_column = 'time:timestamp', time_grouper = None):
     """ General computer.
@@ -105,14 +103,13 @@ def time_compute(dataframe, measure, id_case, time_column):
     dataframe_to_work = pd.DataFrame({'id':filtered_dataframe[id_case], 't': removed_timezones})
 
     if(time_measure_type == 'LINEAR'): 
-        final_result = _linear_time_compute(dataframe_to_work, A_condition, B_condition, is_first, 'id', 't', measure)
-   
+        final_result = _linear_time_compute(dataframe_to_work, A_condition, B_condition, is_first, 'id', 't', measure, True)   
     elif(time_measure_type == 'CYCLIC'):
-        final_result = _cyclic_time_compute(dataframe_to_work, A_condition, B_condition, operation, 'id', 't', measure)
-            
+        final_result = _cyclic_time_compute(dataframe_to_work, A_condition, B_condition, operation, 'id', 't', measure, False)
+       
     return final_result.reindex(dataframe[id_case].unique())
 
-def _linear_time_compute(dataframeToWork, from_condition, to_condition, is_first, id_case, time_column, measure):
+def _linear_time_compute(dataframeToWork, from_condition, to_condition, is_first, id_case, time_column, measure, is_linear):
     filtered_dataframe_A = dataframeToWork[from_condition]
     from_values = filtered_dataframe_A.groupby(id_case)[time_column].first()
     
@@ -122,7 +119,7 @@ def _linear_time_compute(dataframeToWork, from_condition, to_condition, is_first
         finalDataframeB = dataframeToWork[to_condition]        
         to_values = finalDataframeB.groupby(id_case)[time_column].last()
     
-    final_result = _linear_calculation(from_values, to_values, measure)
+    final_result = _linear_calculation(from_values, to_values, measure, is_linear)
 
     return final_result
 
@@ -141,37 +138,11 @@ def _first_to_after_from(from_condition, to_condition, id_values, ts_values):
     # Returns the first of them
     return df.groupby('id')['t'].first()
 
-def _linear_calculation(fromValues, toValues, measure):
-    
-    # Hour, min and second of start and close hour
+def _linear_calculation(fromValues, toValues, measure, is_linear):
 
-    if(measure.business_duration != None):
-        open_time= measure.business_duration.business_start
-        close_time= measure.business_duration.business_end
-        
-        # List of holidays
-        holiday_list = measure.business_duration.holiday_list
-        unit_hour= measure.business_duration.unit_hour
-        weekend_list = measure.business_duration.weekend_list
+    if(measure.business_duration is not None):
 
-        fromValues.name = 'start'
-        toValues.name = 'end'
-
-        dataf = pd.concat([fromValues, toValues], axis=1)
-        dataf['start'] = pd.to_datetime(dataf['start'], format='%Y-%m-%d %H:%M:%S')
-        dataf['end'] = pd.to_datetime(dataf['end'], format='%Y-%m-%d %H:%M:%S')
-    
-        dataf['final'] = list(map(businessDuration,
-                                    dataf['start'],
-                                    dataf['end'],
-                                    repeat(open_time),
-                                    repeat(close_time),
-                                    repeat(weekend_list),
-                                    repeat(holiday_list),
-                                    repeat(unit_hour)))
-
-        result_serie = dataf['final'].squeeze()
-        result_serie[result_serie < 0] = pd.Timedelta('nan')
+        result_serie = businessDuration_calculation(measure, fromValues, toValues, is_linear)
         return result_serie    
     else:
         finalResult = toValues - fromValues   
@@ -186,28 +157,35 @@ def _linear_calculation(fromValues, toValues, measure):
     
     
 
-def _cyclic_time_compute(dataframeToWork, A_condition, B_condition, operation, id_case, time_column, measure):        
+def _cyclic_time_compute(dataframeToWork, A_condition, B_condition, operation, id_case, time_column, measure, is_linear):        
 
-    diff = _compute_cyclic_diff(A_condition, B_condition, dataframeToWork[id_case], dataframeToWork[time_column], measure)
+    diff = _compute_cyclic_diff(A_condition, B_condition, dataframeToWork[id_case], dataframeToWork[time_column], measure, is_linear)
 
     # We remove NaNs so that they do not get evaluated as 0 with sum
     diff = diff.dropna()
 
     # This is necessary because sum() is not allowed in TimeDeltas
-
-    if(measure.business_duration == None):
+    if(measure.business_duration is None):
         diff = diff.dt.total_seconds()
 
         grouped_diff = diff.groupby(dataframeToWork[id_case])
         result = _apply_aggregation(operation, grouped_diff)
-        
+
         return result.apply(lambda x: datetime.timedelta(seconds = x))  
     else:
+        timeType = measure.business_duration.unit_hour
+        if(timeType == 'day'):
+            timeDeltaType = lambda x: (datetime.timedelta(days = x))
+        elif(timeType == 'hour'):
+            timeDeltaType = lambda x: (datetime.timedelta(hours = x))
+        elif(timeType == 'min'):
+            timeDeltaType = lambda x: (datetime.timedelta(minutes = x))
+        elif(timeType == 'sec'):
+            timeDeltaType = lambda x: (datetime.timedelta(seconds = x))
 
         grouped_diff = diff.groupby(dataframeToWork[id_case])
         result = _apply_aggregation(operation, grouped_diff)
-
-        return result.apply(lambda x: datetime.timedelta(hours = x))    
+        return result.apply(timeDeltaType)    
     
 
 def _apply_aggregation(operation, grouped_df):
@@ -236,7 +214,7 @@ def _apply_aggregation(operation, grouped_df):
     return result
 
 
-def _compute_cyclic_diff(from_condition, to_condition, id_case, timestamps, measure):
+def _compute_cyclic_diff(from_condition, to_condition, id_case, timestamps, measure, is_linear):
     df = pd.DataFrame({'id':id_case, 't': timestamps})
     df.loc[from_condition, 'c']='A'
     df.loc[to_condition, 'c']='B'
@@ -256,30 +234,8 @@ def _compute_cyclic_diff(from_condition, to_condition, id_case, timestamps, meas
 
     pair = (df['c']=='A')
 
-    if(measure.business_duration != None):
-        open_time= measure.business_duration.business_start
-        close_time= measure.business_duration.business_end
-        
-        # List of holidays
-        holiday_list = measure.business_duration.holiday_list
-        unit_hour= measure.business_duration.unit_hour
-        weekend_list = measure.business_duration.weekend_list
-        
-        final = pd.DataFrame()
-
-        final['A'] = df_shifted.loc[pair, 't']
-        final['B'] = df.loc[pair,'t']
-
-        final['C'] = list(map(businessDuration,
-                                    final['B'],
-                                    final['A'],
-                                    repeat(open_time),
-                                    repeat(close_time),
-                                    repeat(weekend_list),
-                                    repeat(holiday_list),
-                                    repeat(unit_hour)))
-
-        return final['C']
+    if(measure.business_duration is not None):
+        return businessDuration_calculation(measure, df, df_shifted, is_linear, pair)
     else:
         return df_shifted.loc[pair, 't'] - df.loc[pair,'t']
 
@@ -412,3 +368,48 @@ def derived_compute(dataframe, measure, id_case, time_column, time_grouper=None)
         final_result = final_result.apply(lambda x: datetime.timedelta(seconds = x) if not np.isnan(x) else np.nan)
     
     return final_result
+
+
+def businessDuration_calculation(measure, fromValues, toValues, islinear, pair=None):
+
+    open_time= measure.business_duration.business_start
+    close_time= measure.business_duration.business_end
+    holiday_list = measure.business_duration.holiday_list
+    unit_hour= measure.business_duration.unit_hour
+    weekend_list = measure.business_duration.weekend_list
+
+    if(islinear):
+        fromValues.name = 'start'
+        toValues.name = 'end'
+        dataf = pd.concat([fromValues, toValues], axis=1)
+        dataf['final'] = list(map(businessDuration,
+                                    dataf['start'],
+                                    dataf['end'],
+                                    repeat(open_time),
+                                    repeat(close_time),
+                                    repeat(weekend_list),
+                                    repeat(holiday_list),
+                                    repeat(unit_hour)))
+
+        if(dataf['final'].size > 1):
+            result_serie = dataf['final'].squeeze()
+            result_serie[result_serie < 0.0] = 0
+        else:
+            result_serie = dataf['final']
+
+        return result_serie
+
+    else:
+        final = pd.DataFrame()
+
+        final['A'] = toValues.loc[pair, 't']
+        final['B'] = fromValues.loc[pair,'t']
+        final['C'] = list(map(businessDuration,
+                                final['B'],
+                                final['A'],
+                                repeat(open_time),
+                                repeat(close_time),
+                                repeat(weekend_list),
+                                repeat(holiday_list),
+                                repeat(unit_hour)))
+        return final['C']
