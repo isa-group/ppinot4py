@@ -11,7 +11,8 @@ from .measures import (
     DataMeasure,
     AggregatedMeasure, 
     DerivedMeasure,
-    BusinessDuration
+    BusinessDuration,
+    LogConfiguration
 )
 
 from .states import (
@@ -30,6 +31,7 @@ __all__ = [
     'AggregatedMeasure',
     'DerivedMeasure',
     'BusinessDuration',
+    'LogConfiguration',
     'DataObjectState',
     'RuntimeState'
 ]

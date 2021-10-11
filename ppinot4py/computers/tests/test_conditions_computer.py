@@ -28,7 +28,7 @@ def test_time_instant_process_start():
     dataframeLinear = pd.DataFrame(data)
 
     cond = TimeInstantCondition(RuntimeState.START, AppliesTo.PROCESS)
-    result = condition_computer(dataframeLinear, "case:concept:name", cond)
+    result = condition_computer(dataframeLinear, "case:concept:name", cond, 'lifecycle:transition', 'concept:name')
 
     result_expected = [True, False, False, False, False, False, True, False]
 
@@ -55,7 +55,7 @@ def test_time_instant_process_end():
     dataframeLinear = pd.DataFrame(data)
 
     cond = TimeInstantCondition(RuntimeState.END, AppliesTo.PROCESS)
-    result = condition_computer(dataframeLinear, "case:concept:name", cond)
+    result = condition_computer(dataframeLinear, "case:concept:name", cond, 'lifecycle:transition', 'concept:name')
 
     result_expected = [False, False, False, False, False, False, True, True]
 
