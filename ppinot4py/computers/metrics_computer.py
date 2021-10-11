@@ -5,7 +5,8 @@ from ppinot4py.model import (
     TimeMeasure, 
     AggregatedMeasure,
     DerivedMeasure,
-    BusinessDuration    
+    BusinessDuration,
+    LogConfiguration   
 )
 from ppinot4py.model.measures import _MeasureDefinition
 
@@ -21,16 +22,19 @@ from business_duration import businessDuration
 from itertools import repeat
 
 
-def measure_computer(measure, dataframe, id_case = 'case:concept:name', time_column = 'time:timestamp', time_grouper = None):
+def measure_computer(measure, dataframe, log_configuration: LogConfiguration, time_grouper = None):
     """ General computer.
     
     Args:    
             - measure: Measure, it will call different computers depending on the type.
             - dataframe: Base dataframe we want to use.
             - id_case (optional): ID column of your dataframe (By default is 'case:concept:name').
-            - time_column (optional): Timestamp column of your dataframe (By default is 'time:timestamp').
-            - time_grouper (optional): Time grouper (https://pandas.pydata.org/docs/user_guide/timeseries.html)
-                without the key. If the measure is aggregated, it groups the result by instance end time
+            - LogConfiguration: Contanins the following values:
+                - time_column (optional): Timestamp column of your dataframe (By default is 'time:timestamp').
+                - time_grouper (optional): Time grouper (https://pandas.pydata.org/docs/user_guide/timeseries.html)
+                    without the key. If the measure is aggregated, it groups the result by instance end time
+                - transition_column (optional): Transition column of the dataframe (By default 'lifecycle:transition') 
+                - activity_column (optional): Activity column of the dataframe (By default 'concept:name')
 
             
     Returns:
@@ -39,34 +43,36 @@ def measure_computer(measure, dataframe, id_case = 'case:concept:name', time_col
     """
     try:
         # Need to change ":" for "_" because ".query" put nervous with ":"
-        #dataframe.columns = [column.replace(":", "_") for column in dataframe.columns]
+        # dataframe.columns = [column.replace(":", "_") for column in dataframe.columns]
         # Evaluation wich kind of measure is
         if(type(measure) == CountMeasure):
-            computer = count_compute(dataframe,measure, id_case)
-        if(type(measure) == DataMeasure):
-            computer = data_compute(dataframe,measure, id_case)
-        if(type(measure) == TimeMeasure):
-            computer = time_compute(dataframe,measure, id_case, time_column)
-        if(type(measure) == AggregatedMeasure):
-            computer = aggregated_compute(dataframe, measure, id_case, time_column, time_grouper)
-        if(type(measure) == DerivedMeasure):
-            computer = derived_compute(dataframe, measure, id_case, time_column, time_grouper)
+            computer = count_compute(dataframe,measure, log_configuration)
+        elif(type(measure) == DataMeasure):
+            computer = data_compute(dataframe,measure, log_configuration)
+        elif(type(measure) == TimeMeasure):
+            computer = time_compute(dataframe,measure, log_configuration)
+        elif(type(measure) == AggregatedMeasure):
+            computer = aggregated_compute(dataframe, measure, log_configuration, time_grouper)
+        elif(type(measure) == DerivedMeasure):
+            computer = derived_compute(dataframe, measure, log_configuration, time_grouper)
         return computer
     except ValueError as err:
         raise ValueError("ERROR: A value in the measure wasn't correctly defined") from err
 
 
-def count_compute(dataframe, measure, id_case):
+def count_compute(dataframe, measure, log_configuration):
+    id_case = log_configuration.id_case
     precondition = (measure.when)
-    filtered_series = condition_computer(dataframe, id_case, precondition)
+    filtered_series = condition_computer(dataframe, id_case, precondition, log_configuration.activity_column, log_configuration.transition_column)
     result = filtered_series.groupby(dataframe[id_case]).sum()
 
     return result
 
-def data_compute(dataframe, measure, id_case):
+def data_compute(dataframe, measure, log_configuration):
     precondition = (measure.precondition)
+    id_case = log_configuration.id_case
     if precondition is not None:
-        filtered_series = condition_computer(dataframe, id_case, precondition)
+        filtered_series = condition_computer(dataframe, id_case, precondition, log_configuration.activity_column, log_configuration.transition_column)
         final_dataframe = dataframe[filtered_series]
     else:
         final_dataframe = dataframe
@@ -79,13 +85,18 @@ def data_compute(dataframe, measure, id_case):
 
     return result
 
-def time_compute(dataframe, measure, id_case, time_column):
+def time_compute(dataframe, measure, log_configuration):
     operation = measure.single_instance_agg_function
     precondition = measure.precondition
     time_measure_type = measure.time_measure_type
     from_condition = measure.from_condition
     to_condition = measure.to_condition
     is_first = measure.first_to
+    
+    id_case = log_configuration.id_case
+    transition_column = log_configuration.transition_column
+    activity_column = log_configuration.activity_column
+    time_column = log_configuration.time_column
     
 
     # Initial precondition
@@ -94,8 +105,8 @@ def time_compute(dataframe, measure, id_case, time_column):
     else:
         filtered_dataframe = dataframe
    
-    A_condition = condition_computer(filtered_dataframe, id_case, from_condition)
-    B_condition = condition_computer(filtered_dataframe, id_case, to_condition)
+    A_condition = condition_computer(filtered_dataframe, id_case, from_condition, activity_column, transition_column)
+    B_condition = condition_computer(filtered_dataframe, id_case, to_condition, activity_column, transition_column)
 
     removed_timezones = pd.to_datetime(filtered_dataframe[time_column], utc=True)
     dataframe_to_work = pd.DataFrame({'id':filtered_dataframe[id_case], 't': removed_timezones})
@@ -250,19 +261,22 @@ def _first_change_index(s, id_case):
     cum_change = s.groupby(id_case).cumsum()
     return s.index.to_series().groupby([id_case, cum_change]).first()
 
-def aggregated_compute(dataframe, measure, id_case, time_column, time_grouper = None):
+def aggregated_compute(dataframe, measure, log_configuration, time_grouper = None):
     base_measure = measure.base_measure
     filter_to_apply = measure.filter_to_apply
     operation = measure.single_instance_agg_function
     data_grouper = measure.grouper
+    id_case = log_configuration.id_case
+    time_column = log_configuration.time_column
+
     is_time = False
 
-    base_values = measure_computer(base_measure, dataframe, id_case, time_column)
+    base_values = measure_computer(base_measure, dataframe, log_configuration)
     
     case_end = dataframe.groupby(id_case)[time_column].last()
     
     if((filter_to_apply is not None) and filter_to_apply != ""):
-        filter_condition = measure_computer(filter_to_apply, dataframe, id_case, time_column)
+        filter_condition = measure_computer(filter_to_apply, dataframe, log_configuration)
         # We assume the filtered_condition is fine. Maybe we could do
         # some sanity checking here.
         base_values = base_values[filter_condition]
@@ -324,16 +338,18 @@ def aggregated_compute(dataframe, measure, id_case, time_column, time_grouper = 
 
     return final_result
 
-def derived_compute(dataframe, measure, id_case, time_column, time_grouper=None):
+def derived_compute(dataframe, measure, log_configuration, time_grouper=None):
     
     function = measure.function_expression
     measure_map = measure.measure_map
     data_frame_computer = pd.DataFrame()
+    id_case = log_configuration.id_case
+    time_column = log_configuration.time_column
     istime = False
     
     for key in measure_map: 
         if isinstance(measure_map[key], _MeasureDefinition):
-            data_frame_computer[key] = measure_computer(measure_map[key], dataframe, id_case, time_column, time_grouper)        
+            data_frame_computer[key] = measure_computer(measure_map[key], dataframe, log_configuration, time_grouper)        
         else:
             data_frame_computer[key] = measure_map[key]
 

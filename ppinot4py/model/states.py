@@ -19,11 +19,16 @@ class ComplexState():
             self.last = last
             self.type = state_type
 
-class RuntimeState(enum.Enum):
-    START = 1
-    END = 2
+class RuntimeState():
+    START = DataObjectState('START')
+    END = DataObjectState('END')
+    def __init__(self, state):
+        self.state = state
+
 
 class Type(enum.Enum):
     FOLLOWS = 1
     LEADSTO = 2
     LEADSTOCYCLIC = 3
+
+
