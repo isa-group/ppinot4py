@@ -29,8 +29,11 @@ def _time_instant_condition_resolve(dataframe, id_case, condition: TimeInstantCo
     elif condition.applies_to == AppliesTo.PROCESS:
         return _time_instant_condition_process_resolve(dataframe, id_case, condition.changes_to_state)
     elif condition.applies_to == AppliesTo.ACTIVITY:
-        data_condition = f'`{activity_column}` == {condition.activity_name} and `{transition_column}` == {condition.changes_to_state}'
-        return _time_instant_condition_data_resolve(dataframe, id_case, data_condition)
+        if(check_column_existence(dataframe, activity_column, transition_column)):
+            data_condition = f'`{activity_column}` == {condition.activity_name} and `{transition_column}` == {condition.changes_to_state}'
+            return _time_instant_condition_data_resolve(dataframe, id_case, data_condition)
+        else: 
+            raise ValueError("The activity or transition column don't exists in log")
     else:
         raise ValueError("invalid applies to condition " + str(condition.applies_to))
 
@@ -95,3 +98,10 @@ def _time_instant_condition_activity_resolve(dataframe, id_case, activity_name, 
     final_evaluation = ((condition_in_series) & (condition_in_series_prev))
 
     return final_evaluation
+
+def check_column_existence(dataframe, activity_column, transition_column):
+
+    if (activity_column and transition_column in dataframe.columns):
+        return True
+    else:
+        return False
