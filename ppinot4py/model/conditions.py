@@ -5,6 +5,7 @@ import enum
 class AppliesTo(enum.Enum):
     PROCESS = 1
     DATA = 2
+    ACTIVITY = 3
 
 class DataCondition():
     """
@@ -43,18 +44,19 @@ class TimeInstantCondition():
         The element of the process to which changes_to_state applies.
     """
     
-    def __init__(self, changes_to_state, applies_to=AppliesTo.DATA):
+    def __init__(self, changes_to_state, applies_to=AppliesTo.DATA, activity_name=None):
         if isinstance(changes_to_state, str):
             changes_to_state = DataObjectState(changes_to_state)
         
         self.changes_to_state = changes_to_state
         self.applies_to = applies_to
+        self.activity_name = activity_name
     
     def __repr__(self):
         if self.applies_to == AppliesTo.DATA:
             return f"{self.changes_to_state}"
         else:
-            return f"{self.changes_to_state} - {self.applies_to}"
+            return f"{self.changes_to_state} - {self.applies_to} - {self.activity_name}"
 
 
 

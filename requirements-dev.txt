@@ -1,3 +1,5 @@
 pandas
 numpy
 setuptools
+business-duration
+holidays

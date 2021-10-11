@@ -1,7 +1,8 @@
 from ppinot4py.model import AppliesTo, RuntimeState, TimeInstantCondition
 import pandas as pd
 
-def condition_computer(dataframe, id_case, condition):
+
+def condition_computer(dataframe, id_case, condition, activity_column, transition_column):
 
     if condition is None:
         filteredSeries = dataframe
@@ -12,7 +13,7 @@ def condition_computer(dataframe, id_case, condition):
         filteredSeries = pd.Series(filteredArray)
 
     if(type(condition) == TimeInstantCondition):
-        filteredSeries = _time_instant_condition_resolve(dataframe, id_case, condition)
+        filteredSeries = _time_instant_condition_resolve(dataframe, id_case, condition, activity_column, transition_column)
         
     #In revision    
     if(type(condition) == pd.Series):
@@ -21,15 +22,17 @@ def condition_computer(dataframe, id_case, condition):
     return filteredSeries
 
 
-
-def _time_instant_condition_resolve(dataframe, id_case, condition: TimeInstantCondition):
+def _time_instant_condition_resolve(dataframe, id_case, condition: TimeInstantCondition, activity_column, transition_column):
     TimeInstantCondition(RuntimeState.START, AppliesTo.PROCESS)
     if condition.applies_to == AppliesTo.DATA:
         return _time_instant_condition_data_resolve(dataframe, id_case, str(condition.changes_to_state))
     elif condition.applies_to == AppliesTo.PROCESS:
         return _time_instant_condition_process_resolve(dataframe, id_case, condition.changes_to_state)
+    elif condition.applies_to == AppliesTo.ACTIVITY:
+        data_condition = f'`{activity_column}` == {condition.activity_name} and `{transition_column}` == {condition.changes_to_state}'
+        return _time_instant_condition_data_resolve(dataframe, id_case, data_condition)
     else:
-        raise ValueError("invalid applies to condition " + condition.applies_to)
+        raise ValueError("invalid applies to condition " + str(condition.applies_to))
 
 def _time_instant_condition_process_resolve(dataframe, id_case, changes_to_state):
     default_false = pd.Series(data=False, index=dataframe.index)
@@ -44,6 +47,7 @@ def _time_instant_condition_process_resolve(dataframe, id_case, changes_to_state
 
 def _time_instant_condition_data_resolve(dataframe, id_case, var):
     condition = dataframe.query(var)
+
     condition_in_series = pd.Series(dataframe.index.isin(condition.index))
 
     condition_in_series_prev = condition_in_series.groupby(dataframe[id_case]).shift(+1).fillna(False)
@@ -73,3 +77,21 @@ def _time_instant_condition_data_resolve(dataframe, id_case, var):
     # finishes
 
     return final_evaluation    
+
+def _time_instant_condition_activity_resolve(dataframe, id_case, activity_name, changes_to_state):
+
+    default_false = pd.Series(data=False, index=dataframe.index)
+
+    condition = dataframe.query(activity_name)
+    condition_in_series = pd.Series(dataframe.index.isin(condition.index))
+
+    if changes_to_state == RuntimeState.START:
+        shift = +1
+    else:
+        shift = -1
+
+    condition_in_series_prev = default_false.groupby(dataframe[id_case]).shift(shift).fillna(True)
+
+    final_evaluation = ((condition_in_series) & (condition_in_series_prev))
+
+    return final_evaluation

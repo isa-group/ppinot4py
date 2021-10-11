@@ -1,8 +1,11 @@
-
 import datetime
 import pandas as pd
 from ppinot4py.model import RuntimeState, TimeInstantCondition, AppliesTo
 from ppinot4py.computers import condition_computer
+from business_duration import businessDuration
+import holidays as pyholidays
+from datetime import time
+from itertools import repeat
 
 def test_time_instant_process_start():
     IdCase1 = '1-364285768'
@@ -25,7 +28,7 @@ def test_time_instant_process_start():
     dataframeLinear = pd.DataFrame(data)
 
     cond = TimeInstantCondition(RuntimeState.START, AppliesTo.PROCESS)
-    result = condition_computer(dataframeLinear, "case:concept:name", cond)
+    result = condition_computer(dataframeLinear, "case:concept:name", cond, 'lifecycle:transition', 'concept:name')
 
     result_expected = [True, False, False, False, False, False, True, False]
 
@@ -52,7 +55,7 @@ def test_time_instant_process_end():
     dataframeLinear = pd.DataFrame(data)
 
     cond = TimeInstantCondition(RuntimeState.END, AppliesTo.PROCESS)
-    result = condition_computer(dataframeLinear, "case:concept:name", cond)
+    result = condition_computer(dataframeLinear, "case:concept:name", cond, 'lifecycle:transition', 'concept:name')
 
     result_expected = [False, False, False, False, False, False, True, True]
 
