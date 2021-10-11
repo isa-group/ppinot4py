@@ -176,5 +176,15 @@ class BusinessDuration():
         self.weekend_list = weekend_list
         self.holiday_list = holiday_list
         self.unit_hour = unit_hour
+
+class LogConfiguration():
+    
+    def __init__(self, id_case = 'case:concept:name', time_column = 'time:timestamp', transition_column = 'lifecycle:transition', activity_column = 'concept:name'):
+
+        self.id_case = id_case
+        self.time_column = time_column
+        self.transition_column = transition_column
+        self.activity_column = activity_column
+
  
         

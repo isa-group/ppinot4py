@@ -29,7 +29,13 @@ def log_for_time():
 
     return dataframeLinear
 
-def test_aggregated_compute_time_grouped(log_for_time):
+@pytest.fixture
+def log_config():
+
+    return LogConfiguration()
+
+
+def test_aggregated_compute_time_grouped(log_for_time, log_config):
 
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"',
@@ -40,16 +46,16 @@ def test_aggregated_compute_time_grouped(log_for_time):
         base_measure=timeMeasureLinearA, 
         single_instance_agg_function='SUM')
         
-    timeResult1 = datetime.timedelta(days=365, minutes=46, seconds=6)
+    timeResult1 = datetime.timedelta(days=365, minutes=46, seconds=6) 
     
-    var = measure_computer(aggregatedMeasure, log_for_time, time_grouper=pd.Grouper(freq='1Y'))
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_grouper=pd.Grouper(freq='1Y'))
     
     assert var.size == 5
     assert var.iloc[0] == timeResult1
     assert pd.isnull(var.iloc[1])
     assert var.iloc[2] == datetime.timedelta(days=365)
 
-def test_aggregated_compute_time_no_group(log_for_time):
+def test_aggregated_compute_time_no_group(log_for_time, log_config):
 
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"',
@@ -60,11 +66,11 @@ def test_aggregated_compute_time_no_group(log_for_time):
         base_measure=timeMeasureLinearA, 
         single_instance_agg_function='SUM')
 
-    var = measure_computer(aggregatedMeasure, log_for_time)
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config)
 
     assert var == datetime.timedelta(days=1126, minutes=46, seconds =6)
 
-def test_derived_compute_time_condition(log_for_time):
+def test_derived_compute_time_condition(log_for_time, log_config):
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"',
         to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
@@ -74,14 +80,14 @@ def test_derived_compute_time_condition(log_for_time):
         {"time": timeMeasureLinearA,
          "days366": pd.Timedelta(days=366)})
 
-    var = measure_computer(derivedMeasure, log_for_time)
+    var = measure_computer(derivedMeasure, log_for_time, log_config)
 
     assert var.size == 3
     assert var.iloc[0]
     assert var.iloc[1]
     assert not var.iloc[2]
 
-def test_derived_aggregated_time(log_for_time):
+def test_derived_aggregated_time(log_for_time, log_config):
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"',
         to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
@@ -95,13 +101,13 @@ def test_derived_aggregated_time(log_for_time):
         {"time": aggregatedMeasure,
          "days366": pd.Timedelta(days=366)})
 
-    var = measure_computer(derivedMeasure, log_for_time, time_grouper=pd.Grouper(freq='1Y'))
+    var = measure_computer(derivedMeasure, log_for_time, log_config, time_grouper=pd.Grouper(freq='1Y'))
 
     assert var.size == 5
     assert np.all(var == [True, False, True, False, False])
 
 
-def test_count_compute():
+def test_count_compute(log_config):
     
     countMeasure = CountMeasure('`lifecycle:transition` == "In Progress"')
 
@@ -111,11 +117,11 @@ def test_count_compute():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress']}
             
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(countMeasure, dataframeLinear).iloc[0]
+    var = measure_computer(countMeasure, dataframeLinear, log_config).iloc[0]
 
     assert var == 2
     
-def test_count_compute_not_appear():
+def test_count_compute_not_appear(log_config):
     
     countMeasure = CountMeasure('`lifecycle:transition` == "Closed"')
     
@@ -125,11 +131,11 @@ def test_count_compute_not_appear():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress']}
             
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(countMeasure, dataframeLinear).iloc[0]
+    var = measure_computer(countMeasure, dataframeLinear, log_config).iloc[0]
 
     assert var == 0
     
-def test_count_compute_instances():
+def test_count_compute_instances(log_config):
     
     countMeasure = CountMeasure('`lifecycle:transition` == "In Progress"')
     
@@ -140,12 +146,12 @@ def test_count_compute_instances():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'In Progress', 'In Progress', 'In Progress']}
             
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(countMeasure, dataframeLinear)
+    var = measure_computer(countMeasure, dataframeLinear, log_config)
 
     assert var.iloc[0] == 2
     assert var.iloc[1] == 1
 
-def test_data_computer():
+def test_data_computer(log_config):
     
     dataMeasure = DataMeasure(
         data_content_selection="lifecycle:transition", 
@@ -158,11 +164,11 @@ def test_data_computer():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','Completed']}
             
     dataframeLinear = pd.DataFrame(data)
-    result = measure_computer(dataMeasure, dataframeLinear)
+    result = measure_computer(dataMeasure, dataframeLinear, log_config)
 
     assert result.iloc[0] == 'Completed'
 
-def test_data_computer_precondition():
+def test_data_computer_precondition(log_config):
     
     dataMeasure = DataMeasure(
         precondition="`concept:name` == 'Queued'", 
@@ -176,11 +182,11 @@ def test_data_computer_precondition():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress']}
             
     dataframeLinear = pd.DataFrame(data)
-    result = measure_computer(dataMeasure, dataframeLinear)
+    result = measure_computer(dataMeasure, dataframeLinear, log_config)
     
     assert result.iloc[0] == 'In Progress'
 
-def test_time_linear_instances():
+def test_time_linear_instances(log_config):
     
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"', 
@@ -200,10 +206,10 @@ def test_time_linear_instances():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress']}
             
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureLinearA, dataframeLinear).iloc[0]
+    var = measure_computer(timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
     assert var == timeResult
 
-def test_time_linear_instances_with_several_from():
+def test_time_linear_instances_with_several_from(log_config):
         
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"', 
@@ -226,10 +232,10 @@ def test_time_linear_instances_with_several_from():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'In Progress', 'In Progress', 'In Progress' ]}
     
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureLinearA, dataframeLinear).iloc[0]
+    var = measure_computer(timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
     assert var == timeResult
     
-def test_time_linear_instances_WithSeveralToAndFirstTo():
+def test_time_linear_instances_WithSeveralToAndFirstTo(log_config):
         
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"', 
@@ -252,11 +258,11 @@ def test_time_linear_instances_WithSeveralToAndFirstTo():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'In Progress', 'In Progress', 'In Progress' ]}
     
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureLinearA, dataframeLinear).iloc[0]
+    var = measure_computer(timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
     assert var == timeResult
     
 
-def test_time_linear_instances_WithSeveralToAndNotFirstTo():
+def test_time_linear_instances_WithSeveralToAndNotFirstTo(log_config):
     
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"', 
@@ -279,11 +285,11 @@ def test_time_linear_instances_WithSeveralToAndNotFirstTo():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment' ]}
     
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureLinearA, dataframeLinear).iloc[0]
+    var = measure_computer(timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
     assert var == timeResult
     
     
-def test_time_linear_instances_WithSeveralFromAndToAndFirstTo2():
+def test_time_linear_instances_WithSeveralFromAndToAndFirstTo2(log_config):
     
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"', 
@@ -308,10 +314,10 @@ def test_time_linear_instances_WithSeveralFromAndToAndFirstTo2():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment']}
     
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureLinearA, dataframeLinear).iloc[0]
+    var = measure_computer(timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
     assert var == timeResult
     
-def test_time_cyclic_SumInstances():
+def test_time_cyclic_SumInstances(log_config):
     
     
     timeMeasureCyclic = TimeMeasure(
@@ -339,11 +345,11 @@ def test_time_cyclic_SumInstances():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment']}
     
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureCyclic, dataframeLinear).iloc[0]
+    var = measure_computer(timeMeasureCyclic, dataframeLinear, log_config).iloc[0]
     
     assert var == timeResult
     
-def test_time_cyclic_MaxInstances():
+def test_time_cyclic_MaxInstances(log_config):
     
     timeMeasureCyclic = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"', 
@@ -370,11 +376,11 @@ def test_time_cyclic_MaxInstances():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment']}
     
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureCyclic, dataframeLinear).iloc[0] 
+    var = measure_computer(timeMeasureCyclic, dataframeLinear, log_config).iloc[0] 
     
     assert var == timeResult
     
-def test_time_cyclic_AvgInstances():
+def test_time_cyclic_AvgInstances(log_config):
     
     timeMeasureCyclic = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"', 
@@ -400,11 +406,11 @@ def test_time_cyclic_AvgInstances():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment']}
     
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureCyclic, dataframeLinear).iloc[0]
+    var = measure_computer(timeMeasureCyclic, dataframeLinear, log_config).iloc[0]
     
     assert var == timeResult
 
-def test_derived_instances():
+def test_derived_instances(log_config):
     
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"',
@@ -442,12 +448,12 @@ def test_derived_instances():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Closed', 'In Progress', 'Pending']}
     
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(derived_measure, dataframeLinear)
+    var = measure_computer(derived_measure, dataframeLinear, log_config)
     
     assert var[0] == time_result
 
 
-def test_time_linear_instances_businessDuration_from_7_to_17():
+def test_time_linear_instances_businessDuration_from_7_to_17(log_config):
 
     business = BusinessDuration(
         business_start = time(7,0,0),
@@ -476,10 +482,10 @@ def test_time_linear_instances_businessDuration_from_7_to_17():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress']}
             
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureLinearA, dataframeLinear).iloc[0]
+    var = measure_computer(timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
     assert var == timeResult
 
-def test_time_linear_instances_businessDuration_from_7_to_17_severalFrom():
+def test_time_linear_instances_businessDuration_from_7_to_17_severalFrom(log_config):
 
     business = BusinessDuration(
         business_start = time(7,0,0),
@@ -511,10 +517,10 @@ def test_time_linear_instances_businessDuration_from_7_to_17_severalFrom():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'In Progress', 'In Progress', 'In Progress' ]}
     
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureLinearA, dataframeLinear).iloc[0]
+    var = measure_computer(timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
     assert var == timeResult
 
-def test_time_cyclic_SumInstances_businessDuration():
+def test_time_cyclic_SumInstances_businessDuration(log_config):
     
     business = BusinessDuration(
         business_start = time(7,0,0),
@@ -550,11 +556,11 @@ def test_time_cyclic_SumInstances_businessDuration():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment']}
     
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureCyclic, dataframeLinear).iloc[0]
+    var = measure_computer(timeMeasureCyclic, dataframeLinear, log_config).iloc[0]
     
     assert var == timeResult
 
-def test_time_cyclic_MaxInstances_businessDuration():
+def test_time_cyclic_MaxInstances_businessDuration(log_config):
 
     business = BusinessDuration(
         business_start = time(7,0,0),
@@ -590,11 +596,11 @@ def test_time_cyclic_MaxInstances_businessDuration():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment']}
     
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureCyclic, dataframeLinear).iloc[0] 
+    var = measure_computer(timeMeasureCyclic, dataframeLinear, log_config).iloc[0] 
     
     assert var == timeResult
 
-def test_time_cyclic_AVGInstances_businessDuration():
+def test_time_cyclic_AVGInstances_businessDuration(log_config):
 
     business = BusinessDuration(
         business_start = time(7,0,0),
@@ -630,6 +636,57 @@ def test_time_cyclic_AVGInstances_businessDuration():
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment']}
     
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(timeMeasureCyclic, dataframeLinear).iloc[0] 
+    var = measure_computer(timeMeasureCyclic, dataframeLinear, log_config).iloc[0] 
     
     assert var == timeResult
+
+
+def test_data_computer_precondition_predefined_log_values(log_config):
+
+    precondition = TimeInstantCondition("'Awaiting Assignment'", AppliesTo.ACTIVITY, "'Queued'")
+
+    dataMeasure = DataMeasure(
+            data_content_selection="lifecycle:transition", 
+            precondition = precondition,
+            first=False)
+
+    IdCase1 = '1-364285768'
+    IdCase2 = '1-364285769'
+
+    data = {'case:concept:name': [IdCase1, IdCase1, IdCase1, IdCase2, IdCase1], 
+            'concept:name': ['Queued', 'Queued', 'Not queued', 'Queued', 'Not queued'],
+            'lifecycle:transition': ['In Progress', 'Awaiting Assignment','Completed', 'Awaiting Assignment','Completed']}
+            
+    dataframeLinear = pd.DataFrame(data)
+
+    result = measure_computer(dataMeasure, dataframeLinear, log_config)
+
+    assert result.iloc[0] == 'Awaiting Assignment'
+
+def test_data_computer_precondition_non_predefined_log_values(log_config):
+
+    precondition = TimeInstantCondition("'Awaiting Assignment'", AppliesTo.ACTIVITY, "'Queued'")
+
+    log = LogConfiguration(
+        id_case = 'case:concept:name', 
+        time_column = 'time:timestamp', 
+        transition_column = 'lifecycle:transition:transition', 
+        activity_column = 'concept:name:non:predefined')
+
+    dataMeasure = DataMeasure(
+            data_content_selection="lifecycle:transition:transition", 
+            precondition = precondition,
+            first=False)
+
+    IdCase1 = '1-364285768'
+    IdCase2 = '1-364285769'
+
+    data = {'case:concept:name': [IdCase1, IdCase1, IdCase1, IdCase2, IdCase1], 
+            'concept:name:non:predefined': ['Queued', 'Queued', 'Not queued', 'Queued', 'Not queued'],
+            'lifecycle:transition:transition': ['In Progress', 'Awaiting Assignment','Completed', 'Awaiting Assignment','Completed']}
+            
+    dataframeLinear = pd.DataFrame(data)
+
+    result = measure_computer(dataMeasure, dataframeLinear, log)
+
+    assert result.iloc[0] == 'Awaiting Assignment'
