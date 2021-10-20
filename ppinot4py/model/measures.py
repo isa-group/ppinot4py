@@ -1,4 +1,5 @@
 from .conditions import TimeInstantCondition
+import datetime
 
 def _time_instance_auto_wrap(condition):
     if condition is None:
@@ -176,5 +177,18 @@ class BusinessDuration():
         self.weekend_list = weekend_list
         self.holiday_list = holiday_list
         self.unit_hour = unit_hour
+
+    def conversion(self):
+        if(self.unit_hour == 'day'):
+            time_delta_type = lambda x: (datetime.timedelta(days = x))
+        elif(self.unit_hour == 'hour'):
+            time_delta_type = lambda x: (datetime.timedelta(hours = x))
+        elif(self.unit_hour == 'min'):
+            time_delta_type = lambda x: (datetime.timedelta(minutes = x))
+        elif(self.unit_hour == 'sec'):
+            time_delta_type = lambda x: (datetime.timedelta(seconds = x))
+
+        return time_delta_type
+
  
         
