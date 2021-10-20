@@ -55,6 +55,8 @@ class TimeInstantCondition():
     def __repr__(self):
         if self.applies_to == AppliesTo.DATA:
             return f"{self.changes_to_state}"
+        elif self.applies_to == AppliesTo.PROCESS:
+            return f"{self.changes_to_state} - {self.applies_to}"
         else:
             return f"{self.changes_to_state} - {self.applies_to} - {self.activity_name}"
 
