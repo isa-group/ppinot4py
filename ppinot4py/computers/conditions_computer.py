@@ -1,3 +1,4 @@
+from numpy import true_divide
 from ppinot4py.model import AppliesTo, RuntimeState, TimeInstantCondition
 import pandas as pd
 
@@ -24,13 +25,18 @@ def condition_computer(dataframe, id_case, condition, activity_column, transitio
 
 def _time_instant_condition_resolve(dataframe, id_case, condition: TimeInstantCondition, activity_column, transition_column):
     TimeInstantCondition(RuntimeState.START, AppliesTo.PROCESS)
+
     if condition.applies_to == AppliesTo.DATA:
         return _time_instant_condition_data_resolve(dataframe, id_case, str(condition.changes_to_state))
     elif condition.applies_to == AppliesTo.PROCESS:
         return _time_instant_condition_process_resolve(dataframe, id_case, condition.changes_to_state)
     elif condition.applies_to == AppliesTo.ACTIVITY:
+        condition_checked = check_State(condition.changes_to_state)
         if(check_column_existence(dataframe, activity_column, transition_column)):
-            data_condition = f'`{activity_column}` == {condition.activity_name} and `{transition_column}` == {condition.changes_to_state}'
+            data_condition = f'`{activity_column}` == {condition.activity_name} and `{transition_column}` == {condition_checked}'
+            return _time_instant_condition_data_resolve(dataframe, id_case, data_condition)
+        elif(check_end_condition(condition.changes_to_state)):
+            data_condition = f'`{activity_column}` == {condition.activity_name}'
             return _time_instant_condition_data_resolve(dataframe, id_case, data_condition)
         else: 
             raise ValueError("The activity or transition column don't exists in log")
@@ -81,27 +87,19 @@ def _time_instant_condition_data_resolve(dataframe, id_case, var):
 
     return final_evaluation    
 
-def _time_instant_condition_activity_resolve(dataframe, id_case, activity_name, changes_to_state):
-
-    default_false = pd.Series(data=False, index=dataframe.index)
-
-    condition = dataframe.query(activity_name)
-    condition_in_series = pd.Series(dataframe.index.isin(condition.index))
-
-    if changes_to_state == RuntimeState.START:
-        shift = +1
-    else:
-        shift = -1
-
-    condition_in_series_prev = default_false.groupby(dataframe[id_case]).shift(shift).fillna(True)
-
-    final_evaluation = ((condition_in_series) & (condition_in_series_prev))
-
-    return final_evaluation
 
 def check_column_existence(dataframe, activity_column, transition_column):
+    return (activity_column and transition_column in dataframe.columns)
 
-    if (activity_column and transition_column in dataframe.columns):
-        return True
+
+def check_end_condition(condition):
+    return condition == RuntimeState.END
+
+
+def check_State(condition):
+    if(condition == RuntimeState.START):
+        return "'Assigned'"
+    elif(condition == RuntimeState.END):
+        return "'Completed'"
     else:
-        return False
+        return condition
