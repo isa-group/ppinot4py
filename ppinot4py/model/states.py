@@ -20,14 +20,12 @@ class ComplexState():
             self.type = state_type
 
 class RuntimeState():
+
     def __init__(self, state):
         self.state = state
   
-    def START():
-        return RuntimeState('START')
-    
-    def END():
-        return RuntimeState('END')
+RuntimeState.START = RuntimeState('START')
+RuntimeState.END = RuntimeState('END')
 
 class Type(enum.Enum):
     FOLLOWS = 1
