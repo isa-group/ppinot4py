@@ -21,7 +21,17 @@ from business_duration import businessDuration
 from itertools import repeat
 
 class LogConfiguration():
+    """
+    Class that specifies the configuration (in terms of the names of the attributes) of the log that is 
+    being used in the computation.
     
+    Args:
+        - id_case (optional): Id column of your dataframe (By default is 'case:concept:name')
+        - time_column (optional): Timestamp column of your dataframe (By default is 'time:timestamp').
+        - transition_column (optional): Transition column of the dataframe (By default 'lifecycle:transition') 
+        - activity_column (optional): Activity column of the dataframe (By default 'concept:name')
+
+    """    
     def __init__(self, id_case = 'case:concept:name', time_column = 'time:timestamp', transition_column = 'lifecycle:transition', activity_column = 'concept:name'):
 
         self.id_case = id_case
@@ -30,25 +40,24 @@ class LogConfiguration():
         self.activity_column = activity_column
 
 
-def measure_computer(measure, dataframe, log_configuration = LogConfiguration(), time_grouper = None):
+def measure_computer(measure, dataframe, log_configuration: LogConfiguration = None, time_grouper = None):
     """ General computer.
     
     Args:    
-            - measure: Measure, it will call different computers depending on the type.
-            - dataframe: Base dataframe we want to use.
-            - id_case (optional): ID column of your dataframe (By default is 'case:concept:name').
-            - LogConfiguration: Contanins the following values:
-                - time_column (optional): Timestamp column of your dataframe (By default is 'time:timestamp').
-                - time_grouper (optional): Time grouper (https://pandas.pydata.org/docs/user_guide/timeseries.html)
-                    without the key. If the measure is aggregated, it groups the result by instance end time
-                - transition_column (optional): Transition column of the dataframe (By default 'lifecycle:transition') 
-                - activity_column (optional): Activity column of the dataframe (By default 'concept:name')
-
+        - measure: Measure, it will call different computers depending on the type.
+        - dataframe: Base dataframe we want to use.
+        - log_configuration (optional): LogConfiguration that specifies the names of special columns of the log
+        - time_grouper (optional): Time grouper (https://pandas.pydata.org/docs/user_guide/timeseries.html)
+            without the key. If the measure is aggregated, it groups the result by instance end time
             
     Returns:
-            - Series: Series with pairs of case ID - Data
+        - Series: Series with pairs of case ID - Data
 
     """
+
+    if log_configuration is None:
+        log_configuration = LogConfiguration()
+
     try:
         # Need to change ":" for "_" because ".query" put nervous with ":"
         # dataframe.columns = [column.replace(":", "_") for column in dataframe.columns]
@@ -312,7 +321,7 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
                 if gr_key is None:
                     gr_key = 'group' + str(len(groupers))
             
-                internal_df[gr_key] = measure_computer(gr, dataframe, id_case, time_column)
+                internal_df[gr_key] = measure_computer(gr, dataframe, log_configuration)
                 groupers.append(gr_key)
             else:
                 groupers.append(gr)
