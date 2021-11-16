@@ -85,7 +85,7 @@ class TimeMeasure(_MeasureDefinition):
 
     def __init__(self, from_condition, to_condition, 
                     time_measure_type = 'LINEAR', single_instance_agg_function = 'SUM', 
-                         first_to = False, precondition = None, business_duration = None):
+                         first_to = False, precondition = None, business_duration = None, unit_time = None):
         super().__init__()
   
         self.from_condition = _time_instance_auto_wrap(from_condition)
@@ -95,6 +95,7 @@ class TimeMeasure(_MeasureDefinition):
         self.precondition = precondition
         self.first_to = first_to
         self.business_duration = business_duration
+        self.unit_time = unit_time
         
     def __repr__(self):
         return f"TimeMeasure ( from={self.from_condition}, to={self.to_condition} )"

@@ -5,7 +5,8 @@ from ppinot4py.model import (
     TimeMeasure, 
     AggregatedMeasure,
     DerivedMeasure,
-    BusinessDuration  
+    BusinessDuration,
+    UnitTime  
 )
 from ppinot4py.model.measures import _MeasureDefinition
 
@@ -100,6 +101,7 @@ def time_compute(dataframe, measure, log_configuration):
     from_condition = measure.from_condition
     to_condition = measure.to_condition
     is_first = measure.first_to
+    unit_time = measure.unit_time
     
     id_case = log_configuration.id_case
     transition_column = log_configuration.transition_column
@@ -123,8 +125,13 @@ def time_compute(dataframe, measure, log_configuration):
         final_result = _linear_time_compute(dataframe_to_work, A_condition, B_condition, is_first, 'id', 't', measure)   
     elif(time_measure_type == 'CYCLIC'):
         final_result = _cyclic_time_compute(dataframe_to_work, A_condition, B_condition, operation, 'id', 't', measure)
-       
-    return final_result.reindex(dataframe[id_case].unique())
+
+    result_reindex = final_result.reindex(dataframe[id_case].unique())
+
+    if(unit_time != None):
+        return result_reindex/ np.timedelta64(1, unit_time.value)
+    else:
+        return result_reindex
 
 def _linear_time_compute(dataframeToWork, from_condition, to_condition, is_first, id_case, time_column, measure):
     filtered_dataframe_A = dataframeToWork[from_condition]

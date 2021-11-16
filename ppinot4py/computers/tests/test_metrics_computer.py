@@ -690,3 +690,49 @@ def test_data_computer_precondition_non_predefined_log_values(log_config):
     result = measure_computer(dataMeasure, dataframeLinear, log)
 
     assert result.iloc[0] == 'Awaiting Assignment'
+
+
+def test_time_computer_different_time_units_years(log_for_time):
+
+    timeMeasureLinearA = TimeMeasure(
+    from_condition='`lifecycle:transition` == "In Progress"',
+    to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+    first_to=True,
+    unit_time=UnitTime.YEAR)
+
+    aggregatedMeasure = AggregatedMeasure(
+    base_measure=timeMeasureLinearA, 
+    single_instance_agg_function='SUM')
+
+    timeResult1 = 0.9994237086015151
+    timeResult2 = 0.9993360575508052
+
+    var = measure_computer(aggregatedMeasure, log_for_time, LogConfiguration(), time_grouper=pd.Grouper(freq='1Y'))
+
+    assert var.size == 5
+    assert var.iloc[0] == timeResult1
+    assert pd.isnull(var.iloc[1])
+    assert var.iloc[2] == timeResult2
+
+
+def test_time_computer_different_time_units_days(log_for_time):
+
+    timeMeasureLinearA = TimeMeasure(
+    from_condition='`lifecycle:transition` == "In Progress"',
+    to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+    first_to=True,
+    unit_time=UnitTime.DAY)
+
+    aggregatedMeasure = AggregatedMeasure(
+    base_measure=timeMeasureLinearA, 
+    single_instance_agg_function='SUM')
+
+    timeResult1 = 365.0320138888889
+    timeResult2 = 365.0
+
+    var = measure_computer(aggregatedMeasure, log_for_time, LogConfiguration(), time_grouper=pd.Grouper(freq='1Y'))
+
+    assert var.size == 5
+    assert var.iloc[0] == timeResult1
+    assert pd.isnull(var.iloc[1])
+    assert var.iloc[2] == timeResult2
