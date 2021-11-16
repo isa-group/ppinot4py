@@ -7,6 +7,14 @@ class AppliesTo(enum.Enum):
     DATA = 2
     ACTIVITY = 3
 
+class UnitTime(enum.Enum):
+    YEAR = "Y"
+    MONTH = "M"
+    DAY = "D"
+    HOUR = "h"
+    MINUTE = "m"
+    SECOND = "s"
+
 class DataCondition():
     """
         Evaluates to true for all events whose attributes meet the condition.

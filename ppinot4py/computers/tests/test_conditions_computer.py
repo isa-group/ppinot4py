@@ -199,5 +199,3 @@ def test_time_instant_process_activity_no_lifecycle_START_error():
                 condition_computer(dataframeLinear, "case:concept:name", precondition, 'concept:name', 'lifecycle:transition')
 
         
-
-

@@ -4,8 +4,7 @@ from ppinot4py.model import (
     DataMeasure, 
     TimeMeasure, 
     AggregatedMeasure,
-    DerivedMeasure,
-    BusinessDuration  
+    DerivedMeasure
 )
 from ppinot4py.model.measures import _MeasureDefinition
 
@@ -49,6 +48,28 @@ def measure_computer(measure, dataframe, log_configuration: LogConfiguration = N
         - log_configuration (optional): LogConfiguration that specifies the names of special columns of the log
         - time_grouper (optional): Time grouper (https://pandas.pydata.org/docs/user_guide/timeseries.html)
             without the key. If the measure is aggregated, it groups the result by instance end time
+    """
+    def __init__(self, id_case = 'case:concept:name', time_column = 'time:timestamp', transition_column = 'lifecycle:transition', activity_column = 'concept:name'):
+
+        self.id_case = id_case
+        self.time_column = time_column
+        self.transition_column = transition_column
+        self.activity_column = activity_column
+
+
+def measure_computer(measure, dataframe, log_configuration = LogConfiguration(), time_grouper = None):
+    """ General computer.
+    
+    Args:    
+            - measure: Measure, it will call different computers depending on the type.
+            - dataframe: Base dataframe we want to use.
+            - id_case (optional): ID column of your dataframe (By default is 'case:concept:name').
+            - LogConfiguration: Contanins the following values:
+                - time_column (optional): Timestamp column of your dataframe (By default is 'time:timestamp').
+                - time_grouper (optional): Time grouper (https://pandas.pydata.org/docs/user_guide/timeseries.html)
+                    without the key. If the measure is aggregated, it groups the result by instance end time
+                - transition_column (optional): Transition column of the dataframe (By default 'lifecycle:transition') 
+                - activity_column (optional): Activity column of the dataframe (By default 'concept:name')
             
     Returns:
         - Series: Series with pairs of case ID - Data
@@ -109,6 +130,12 @@ def time_compute(dataframe, measure, log_configuration):
     from_condition = measure.from_condition
     to_condition = measure.to_condition
     is_first = measure.first_to
+    unit_time = measure.unit_time
+    
+    id_case = log_configuration.id_case
+    transition_column = log_configuration.transition_column
+    activity_column = log_configuration.activity_column
+    time_column = log_configuration.time_column
     
     id_case = log_configuration.id_case
     transition_column = log_configuration.transition_column
@@ -132,8 +159,13 @@ def time_compute(dataframe, measure, log_configuration):
         final_result = _linear_time_compute(dataframe_to_work, A_condition, B_condition, is_first, 'id', 't', measure)   
     elif(time_measure_type == 'CYCLIC'):
         final_result = _cyclic_time_compute(dataframe_to_work, A_condition, B_condition, operation, 'id', 't', measure)
-       
-    return final_result.reindex(dataframe[id_case].unique())
+
+    result_reindex = final_result.reindex(dataframe[id_case].unique())
+
+    if(unit_time != None):
+        return result_reindex/ np.timedelta64(1, unit_time.value)
+    else:
+        return result_reindex
 
 def _linear_time_compute(dataframeToWork, from_condition, to_condition, is_first, id_case, time_column, measure):
     filtered_dataframe_A = dataframeToWork[from_condition]

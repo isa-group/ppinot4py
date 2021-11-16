@@ -2,7 +2,8 @@ from .conditions import (
     TimeInstantCondition, 
     AppliesTo,
     DataCondition, 
-    SeriesCondition
+    SeriesCondition,
+    UnitTime
 )
 
 from .measures import (
@@ -22,6 +23,7 @@ from .states import (
 __all__ = [
     'TimeInstantCondition',
     'AppliesTo',
+    'UnitTime',
     'DataCondition',
     'SeriesCondition',
     'CountMeasure',
