@@ -190,6 +190,28 @@ class BusinessDuration():
 
         return time_delta_type
 
+class RollingWindow():
+    """Window applied to the data to group with a moving window.
+    
+    Args:
+    
+            - window: Size of the moving window, could be a number or a time expression ('7D')
+            - min_period: Minimum number of observations in window required to have a value 
+            - center: Set the labels at the center of the window.
+            - win_type: Provide a window type. If None, all points are evenly weighted
+            - on: For a DataFrame, a datetime-like column or Index level on which to calculate the rolling window, rather than the DataFrame’s index.
+            - closed: Make the interval closed on the ‘right’, ‘left’, ‘both’ or ‘neither’ endpoints.
+    """
+    def __init__(self, window, min_period=None, center=False, win_type=None, on='case_end', closed=None):
+        
+        self.window = window
+        self.min_period = min_period
+        self.center = center
+        self.win_type = win_type
+        self.on = on
+        self.closed = closed
+
+
 
  
         
