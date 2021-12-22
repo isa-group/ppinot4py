@@ -1,5 +1,7 @@
 from .conditions import TimeInstantCondition
 import datetime
+import calendar
+import holidays as pyholidays
 
 def _time_instance_auto_wrap(condition):
     if condition is None:
@@ -187,9 +189,29 @@ class BusinessDuration():
             time_delta_type = lambda x: (datetime.timedelta(minutes = x))
         elif(self.unit_hour == 'sec'):
             time_delta_type = lambda x: (datetime.timedelta(seconds = x))
-
         return time_delta_type
 
+    def day_of_the_week(weekend_list):
+        weekDayInNumber = list(calendar.day_name)
+        newWeekList = []
 
- 
+        for x in weekend_list:
+            newWeekList.append(weekDayInNumber[x])
         
+        daysInText = ", ".join([f"{g}" for g in newWeekList])
+
+        return daysInText
+
+    def holidays_in_the_year(holidays):
+        listOfNames = []
+       
+        daysInText = ", ".join([f"{name}" for date, name in sorted(holidays.items())])
+        return daysInText
+
+    def __str__(self):
+
+        daysInText = BusinessDuration.day_of_the_week(self.weekend_list)
+        listOfNamesInYear = BusinessDuration.holidays_in_the_year(self.holiday_list)
+        text = f"The business time starts at {self.business_start}, ends at {self.business_end}, the weekend is defined in the days {daysInText}, the name of the holidays days are: {listOfNamesInYear} and the unit of time used is {self.unit_hour}"
+
+        return text
