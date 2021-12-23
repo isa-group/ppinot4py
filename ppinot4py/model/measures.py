@@ -1,5 +1,6 @@
 from .conditions import TimeInstantCondition
 import datetime
+import enum
 
 def _time_instance_auto_wrap(condition):
     if condition is None:
@@ -19,6 +20,14 @@ def _name_of_aggregation(agg):
         return "maximum"
     if agg == "SUM":
         return "sum"
+
+class TimeUnit(enum.Enum):
+    YEAR = "Y"
+    MONTH = "M"
+    DAY = "D"
+    HOUR = "h"
+    MINUTE = "m"
+    SECOND = "s"
 
 class _MeasureDefinition():
     def __init__(self):
@@ -70,22 +79,23 @@ class TimeMeasure(_MeasureDefinition):
     
     Args:
     
-            - from_condition: Condition where you want to start counting, defined as A
-            - to_condition: End condition, defined as B
-            - time_measure_type: Linear in case just want a simple A-B calc, Cyclic in case you want to count 
-                all pairs A-B appearances
-            - single_instance_agg_function: Only in Cyclic mode. Type of operation applied to our dataset, 
-                can be MAX, MIN, SUM, or AVG. 
-            - first_to: Only in Linear mode. True to take first appareance of B, false to take last appareance of B
-            - precondition: Filter to previusly apply to our dataset. Note that, in this case, this precondition
-                            is not a time instant condition, but a data condition (i.e., it is directly checked with
-                            the values of the attributes of each event)
-            - business_duration: Business days specifications
+        - from_condition: Condition where you want to start counting, defined as A
+        - to_condition: End condition, defined as B
+        - time_measure_type: Linear in case just want a simple A-B calc, Cyclic in case you want to count 
+            all pairs A-B appearances
+        - single_instance_agg_function: Only in Cyclic mode. Type of operation applied to our dataset, 
+            can be MAX, MIN, SUM, or AVG. 
+        - first_to: Only in Linear mode. True to take first appareance of B, false to take last appareance of B
+        - precondition: Filter to previusly apply to our dataset. Note that, in this case, this precondition
+                        is not a time instant condition, but a data condition (i.e., it is directly checked with
+                        the values of the attributes of each event)
+        - business_duration: Business days and hours specification
+        - time_unit: The time unit used to return the value.
     """
 
     def __init__(self, from_condition, to_condition, 
                     time_measure_type = 'LINEAR', single_instance_agg_function = 'SUM', 
-                         first_to = False, precondition = None, business_duration = None):
+                         first_to = False, precondition = None, business_duration = None, time_unit = None):
         super().__init__()
   
         self.from_condition = _time_instance_auto_wrap(from_condition)
@@ -95,6 +105,7 @@ class TimeMeasure(_MeasureDefinition):
         self.precondition = precondition
         self.first_to = first_to
         self.business_duration = business_duration
+        self.time_unit = time_unit
         
     def __repr__(self):
         return f"TimeMeasure ( from={self.from_condition}, to={self.to_condition} )"
