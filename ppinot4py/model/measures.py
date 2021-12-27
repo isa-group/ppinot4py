@@ -194,21 +194,18 @@ class RollingWindow():
     """Window applied to the data to group with a moving window.
     
     Args:
-    
-            - window: Size of the moving window, could be a number or a time expression ('7D')
-            - min_period: Minimum number of observations in window required to have a value 
-            - center: Set the labels at the center of the window.
-            - win_type: Provide a window type. If None, all points are evenly weighted
-            - on: For a DataFrame, a datetime-like column or Index level on which to calculate the rolling window, rather than the DataFrame’s index.
-            - closed: Make the interval closed on the ‘right’, ‘left’, ‘both’ or ‘neither’ endpoints.
+        - window: Size of the moving window, could be a number or a time expression ('7D'). If it is a number, then apply_to_cases must be true.
+        - apply_to_cases: Returns the moving window for each case instead of based on the window frequency.
+        - min_period: Minimum number of observations in window required to have a value 
+        - closed: Make the interval closed on the ‘right’, ‘left’, ‘both’ or ‘neither’ endpoints.
     """
-    def __init__(self, window, min_period=None, center=False, win_type=None, on='case_end', closed=None):
-        
+    def __init__(self, window, apply_to_cases=False, min_period=None, closed=None):
+        if (isinstance(window, int) or (isinstance(window,float) and window.is_integer())) and not apply_to_cases:
+            raise ValueError('If window is an integer, apply_to_cases must be True')
+
         self.window = window
+        self.apply_to_cases = apply_to_cases
         self.min_period = min_period
-        self.center = center
-        self.win_type = win_type
-        self.on = on
         self.closed = closed
 
 

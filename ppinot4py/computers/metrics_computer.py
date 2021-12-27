@@ -7,7 +7,7 @@ from ppinot4py.model import (
     DerivedMeasure,
     BusinessDuration  
 )
-from ppinot4py.model.measures import _MeasureDefinition
+from ppinot4py.model.measures import _MeasureDefinition, RollingWindow
 
 import pandas as pd
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
@@ -40,7 +40,7 @@ class LogConfiguration():
         self.activity_column = activity_column
 
 
-def measure_computer(measure, dataframe, log_configuration: LogConfiguration = None, time_grouper = None, time_rolling = None):
+def measure_computer(measure, dataframe, log_configuration: LogConfiguration = None, time_grouper = None):
     """ General computer.
     
     Args:    
@@ -69,7 +69,7 @@ def measure_computer(measure, dataframe, log_configuration: LogConfiguration = N
         elif(type(measure) == TimeMeasure):
             computer = time_compute(dataframe,measure, log_configuration)
         elif(type(measure) == AggregatedMeasure):
-            computer = aggregated_compute(dataframe, measure, log_configuration, time_grouper, time_rolling)
+            computer = aggregated_compute(dataframe, measure, log_configuration, time_grouper)
         elif(type(measure) == DerivedMeasure):
             computer = derived_compute(dataframe, measure, log_configuration, time_grouper)
         return computer
@@ -202,56 +202,28 @@ def _cyclic_time_compute(dataframeToWork, A_condition, B_condition, operation, i
     return result.apply(conversion)  
     
 
-def _apply_aggregation(operation, grouped_df, time_rolling = None):
+def _apply_aggregation(operation, grouped_df):
 
     if not isinstance(operation, str):
         raise ValueError('Aggregation function must be a string: sum, min, max, avg or groupby')
 
-    if time_rolling is not None:
-        roll_window = time_rolling.window
-        roll_min_period = time_rolling.min_period
-        roll_center = time_rolling.center
-        roll_win_type = time_rolling.win_type
-        roll_on = time_rolling.on
-        roll_closed = time_rolling.closed
+    if(operation.upper() == 'SUM'):
+        result = grouped_df.sum(min_count=1)
 
-        if(operation.upper() == 'SUM'):
-            result = grouped_df.rolling(roll_window, min_periods=roll_min_period, center=roll_center, win_type=roll_win_type, on=roll_on, closed=roll_closed).sum(min_count=1)
+    elif(operation.upper() == "MIN"):
+        result = grouped_df.min()
 
-        elif(operation.upper() == "MIN"):
-            result = grouped_df.rolling(roll_window, min_periods=roll_min_period, center=roll_center, win_type=roll_win_type, on=roll_on, closed=roll_closed).min()
+    elif(operation.upper() == "MAX"):
+        result = grouped_df.max()
 
-        elif(operation.upper() == "MAX"):
-            result = grouped_df.rolling(roll_window, min_periods=roll_min_period, center=roll_center, win_type=roll_win_type, on=roll_on, closed=roll_closed).max()
+    elif(operation.upper() == "AVG"):
+        result = grouped_df.mean()
 
-        elif(operation.upper() == "AVG"):
-            result = grouped_df.rolling(roll_window, min_periods=roll_min_period, center=roll_center, win_type=roll_win_type, on=roll_on, closed=roll_closed).mean()
-
-        elif(operation.upper() == "GROUPBY"):
-            result = grouped_df.rolling(roll_window, min_periods=roll_min_period, center=roll_center, win_type=roll_win_type, on=roll_on, closed=roll_closed)
-
-        else:
-            raise ValueError(f'Aggregation operation not valid {operation}. Should be: sum, min, max, avg or groupby')
-
+    elif(operation.upper() == "GROUPBY"):
+        result = grouped_df
 
     else:
-        if(operation.upper() == 'SUM'):
-            result = grouped_df.sum(min_count=1)
-
-        elif(operation.upper() == "MIN"):
-            result = grouped_df.min()
-
-        elif(operation.upper() == "MAX"):
-            result = grouped_df.max()
-
-        elif(operation.upper() == "AVG"):
-            result = grouped_df.mean()
-
-        elif(operation.upper() == "GROUPBY"):
-            result = grouped_df
-
-        else:
-            raise ValueError(f'Aggregation operation not valid {operation}. Should be: sum, min, max, avg or groupby')
+        raise ValueError(f'Aggregation operation not valid {operation}. Should be: sum, min, max, avg or groupby')
 
     return result
 
@@ -306,7 +278,7 @@ def _first_change_index(s, id_case):
     cum_change = s.groupby(id_case).cumsum()
     return s.index.to_series().groupby([id_case, cum_change]).first()
 
-def aggregated_compute(dataframe, measure, log_configuration, time_grouper = None, time_rolling = None):
+def aggregated_compute(dataframe, measure, log_configuration, time_grouper = None):
     base_measure = measure.base_measure
     filter_to_apply = measure.filter_to_apply
     operation = measure.single_instance_agg_function
@@ -314,12 +286,8 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
     id_case = log_configuration.id_case
     time_column = log_configuration.time_column
 
-    if(time_rolling is not None):
-        int_condition = type(time_rolling.window) is not int
-        str_condition = type(time_rolling.window) is not str
-    else:
-        int_condition = True
-        str_condition = True
+    if ((data_grouper is not None) and (len(data_grouper) > 0)) and (isinstance(time_grouper, RollingWindow)):
+        raise ValueError('A rolling time_grouper cannot be used with an AggregatedMeasure with group by')
 
     is_time = False
 
@@ -336,7 +304,7 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
         case_end = case_end[filter_condition]
 
     # Case end could also be configurable
-    internal_df = pd.DataFrame({'data':base_values, 'case_end':case_end})
+    internal_df = pd.DataFrame({'data':base_values, 'case_end':case_end}).sort_values(by='case_end')
 
     if not is_datetime(internal_df['case_end']):
         internal_df['case_end'] = pd.to_datetime(internal_df['case_end'], utc=True)
@@ -362,38 +330,57 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
             else:
                 groupers.append(gr)
 
-    if time_grouper is not None and time_rolling is None:
-        internal_time_grouper = copy(time_grouper)
-        internal_time_grouper.key = 'case_end'
-        groupers.append(internal_time_grouper)
-        
-    elif time_grouper is not None and time_rolling is not None and int_condition:
-        internal_time_grouper = copy(time_grouper)
-        #internal_df = internal_df.set_index('case_end')
-        
-    if len(groupers) > 0 and str_condition is not str and int_condition:
+    if time_grouper is not None:
+        temp_grouper = None
+        if isinstance(time_grouper, str):
+            temp_grouper = pd.Grouper(freq=time_grouper)
+        elif isinstance(time_grouper, RollingWindow):
+            if not time_grouper.apply_to_cases:
+                offset = pd.tseries.frequencies.to_offset(time_grouper.window)
+                temp_grouper = pd.Grouper(freq=offset.base)
+        else:
+            temp_grouper = time_grouper
+
+        if temp_grouper is not None:
+            internal_time_grouper = copy(temp_grouper)
+            internal_time_grouper.key = 'case_end'
+            groupers.append(internal_time_grouper)
+    
+    if len(groupers) > 0:
         result_grouped = internal_df.groupby(groupers)
     else:
         result_grouped = internal_df
 
-    if str_condition and int_condition:
+    if not isinstance(time_grouper, RollingWindow):
         final_result = _apply_aggregation(operation, result_grouped)
     else:
-        final_result = _apply_aggregation(operation, result_grouped, time_rolling)
-
-        final_result['data'] = pd.to_timedelta(final_result['data'], unit='s')
+        roll_window = time_grouper.window
+        roll_min_period = time_grouper.min_period
+        roll_closed = time_grouper.closed
+        if time_grouper.apply_to_cases:
+            rolling_result = result_grouped.rolling(roll_window, min_periods=roll_min_period, on='case_end', closed=roll_closed)
+            final_result = _apply_aggregation(operation, rolling_result)
+        else:
+            if operation.upper() == 'AVG':
+                rolling_sum = result_grouped.sum().rolling(roll_window, min_periods=roll_min_period, closed=roll_closed).sum()
+                rolling_count = result_grouped.count().rolling(roll_window, min_periods=roll_min_period, closed=roll_closed).sum()
+                final_result = rolling_sum / rolling_count
+            else:   
+                agg_result = _apply_aggregation(operation, result_grouped)
+                rolling_result = agg_result.rolling(roll_window, min_periods=roll_min_period, closed=roll_closed)
+                final_result = _apply_aggregation(operation, rolling_result)
 
     if(operation.upper() == "GROUPBY"):
         is_time = False
 
-    if len(final_result) > 1 and str_condition and int_condition:
+    if len(final_result) > 1:
         if is_time == True:
             final_result = final_result['data'].apply(lambda x: datetime.timedelta(seconds = x) if not np.isnan(x) else np.nan)
         else:
             final_result = final_result['data']
         #final_result = final_result.drop('case_end', axis=0, errors='ignore')
     else:
-        if is_time == True and str_condition and int_condition:
+        if is_time == True:
             final_result = datetime.timedelta(seconds = final_result['data']) if not np.isnan(final_result['data']) else np.nan
         else:
             final_result = final_result['data']

@@ -693,7 +693,7 @@ def test_data_computer_precondition_non_predefined_log_values(log_config):
 
     assert result.iloc[0] == 'Awaiting Assignment'
 
-def test_aggregated_compute_time_rolling_base_numeric_window_2_sum(log_for_time, log_config):
+def test_aggregated_compute_time_rolling_base_date_window_800_days_sum_to_cases(log_for_time, log_config):
 
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"',
@@ -705,12 +705,15 @@ def test_aggregated_compute_time_rolling_base_numeric_window_2_sum(log_for_time,
         single_instance_agg_function='SUM')
 
     rolling = RollingWindow(
-      window = 2
+      window = "800D",
+      apply_to_cases=True
     )
     
-    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_rolling=rolling)
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_grouper=rolling)
     
     assert var.size == 3
+    assert var.iloc[0] == datetime.timedelta(days=365, minutes=46, seconds=6)
+    assert var.iloc[1] == datetime.timedelta(days=730, minutes=46, seconds=6)
     assert var.iloc[2] == datetime.timedelta(days=761)
 
 def test_aggregated_compute_time_rolling_base_date_window_800_days_sum(log_for_time, log_config):
@@ -728,17 +731,17 @@ def test_aggregated_compute_time_rolling_base_date_window_800_days_sum(log_for_t
       window = "800D"
     )
     
-    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_rolling=rolling)
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_grouper=rolling)
 
-    var[0] = datetime.timedelta(seconds=math.ceil(var[0].total_seconds()))
-    var[1] = datetime.timedelta(seconds=math.ceil(var[1].total_seconds()))
+    counts = var.value_counts()
     
-    assert var.size == 3
-    assert var.iloc[0] == datetime.timedelta(days=365, minutes=46, seconds=6)
-    assert var.iloc[1] == datetime.timedelta(days=730, minutes=46, seconds=6)
-    assert var.iloc[2] == datetime.timedelta(days=761)
+    assert var.size == 1529
+    assert counts.index[0] == datetime.timedelta(days=365, minutes=46, seconds=6)
+    assert counts.index[1] == datetime.timedelta(days=365)
+    assert counts.index[2] == datetime.timedelta(days=730, minutes=46, seconds=6)
+    assert counts.index[3] == datetime.timedelta(days=761)
 
-def test_aggregated_compute_time_rolling_base_numeric_window_3_sum(log_for_time, log_config):
+def test_aggregated_compute_time_rolling_base_date_window_800_days_avg(log_for_time, log_config):
 
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"',
@@ -747,16 +750,21 @@ def test_aggregated_compute_time_rolling_base_numeric_window_3_sum(log_for_time,
 
     aggregatedMeasure = AggregatedMeasure(
         base_measure=timeMeasureLinearA, 
-        single_instance_agg_function='SUM')
+        single_instance_agg_function='AVG')
 
     rolling = RollingWindow(
-      window = 3
+      window = "800D"
     )
     
-    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_rolling=rolling)
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_grouper=rolling)
+
+    counts = var.value_counts()
     
-    assert var.size == 3
-    assert var.iloc[2] == datetime.timedelta(days=1126, minutes=46, seconds=6)
+    assert var.size == 1529
+    assert counts.index[0] == datetime.timedelta(days=365, minutes=46, seconds=6)
+    assert counts.index[1] == datetime.timedelta(days=365)
+    assert counts.index[2] == datetime.timedelta(days=365, minutes=23, seconds=3)
+    assert counts.index[3] == datetime.timedelta(days=380, hours=12)
 
 def test_aggregated_compute_time_rolling_base_numeric_window_3_center_sum(log_for_time, log_config):
 
@@ -770,145 +778,13 @@ def test_aggregated_compute_time_rolling_base_numeric_window_3_center_sum(log_fo
         single_instance_agg_function='SUM')
 
     rolling = RollingWindow(
-      window = 3,
-      center = True
+      window = 2,
+      apply_to_cases=True
     )
     
-    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_rolling=rolling)
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_grouper=rolling)
     
     assert var.size == 3
-    assert var.iloc[1] == datetime.timedelta(days=1126, minutes=46, seconds=6)
-
-def test_aggregated_compute_time_rolling_base_numeric_window_2_avg(log_config):
-
-    IdCase1 = '1-364285768'
-    IdCase2 = '2-364285768'
-    IdCase3 = '3-364285768'
-    IdCase4 = '4-364285768'
-    IdCase5 = '5-364285768'
-
-    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
-    time2 = datetime.datetime(2011, 3, 31, 17, 45, 48)
-    time3 = datetime.datetime(2012, 4, 6, 16, 44, 7)
-    time4 = datetime.datetime(2013, 4, 6, 16, 44, 7)
-    time5 = datetime.datetime(2014, 5, 6, 16, 44, 7)
-    time6 = datetime.datetime(2015, 6, 6, 16, 44, 7)
-    time7 = datetime.datetime(2016, 6, 6, 16, 44, 7)
-    time8 = datetime.datetime(2017, 6, 6, 16, 44, 7)
-    time9 = datetime.datetime(2018, 6, 6, 16, 44, 7)
-    time10 = datetime.datetime(2019, 6, 6, 16, 44, 7)
-
-    data = {'case:concept:name':[IdCase1, IdCase1, IdCase2, IdCase2, IdCase3, IdCase3, IdCase4, IdCase4, IdCase5, IdCase5], 
-            'time:timestamp': [time1, time2, time3, time4, time5, time6, time7, time8, time9, time10],
-            'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment']}
-
-    dataframeLinear = pd.DataFrame(data)
-
-    timeMeasureLinearA = TimeMeasure(
-        from_condition='`lifecycle:transition` == "In Progress"',
-        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
-        first_to=True)
-
-    aggregatedMeasure = AggregatedMeasure(
-        base_measure=timeMeasureLinearA, 
-        single_instance_agg_function='AVG')
-
-    rolling = RollingWindow(
-        window = 3,
-        center = True)
-    
-    var = measure_computer(aggregatedMeasure, dataframeLinear, log_config, time_rolling=rolling)
-    
-    assert var.size == 5
-    assert var.iloc[1] == datetime.timedelta(days=375, hours=8, minutes=15, seconds=22)
-    assert var.iloc[3] == datetime.timedelta(days=375, hours=8)
-
-def test_aggregated_compute_time_rolling_base_numeric_window_2_min(log_config):
-
-    IdCase1 = '1-364285768'
-    IdCase2 = '2-364285768'
-    IdCase3 = '3-364285768'
-    IdCase4 = '4-364285768'
-    IdCase5 = '5-364285768'
-
-    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
-    time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
-    time3 = datetime.datetime(2012, 4, 6, 16, 44, 7)
-    time4 = datetime.datetime(2013, 4, 6, 16, 44, 7)
-    time5 = datetime.datetime(2014, 5, 6, 16, 44, 7)
-    time6 = datetime.datetime(2015, 6, 6, 16, 44, 7)
-    time7 = datetime.datetime(2016, 6, 6, 16, 44, 7)
-    time8 = datetime.datetime(2017, 6, 6, 16, 44, 7)
-    time9 = datetime.datetime(2018, 6, 6, 16, 44, 7)
-    time10 = datetime.datetime(2019, 6, 6, 16, 44, 7)
-
-    data = {'case:concept:name':[IdCase1, IdCase1, IdCase2, IdCase2, IdCase3, IdCase3, IdCase4, IdCase4, IdCase5, IdCase5], 
-            'time:timestamp': [time1, time2, time3, time4, time5, time6, time7, time8, time9, time10],
-            'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment']}
-
-    dataframeLinear = pd.DataFrame(data)
-
-    timeMeasureLinearA = TimeMeasure(
-        from_condition='`lifecycle:transition` == "In Progress"',
-        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
-        first_to=True)
-
-    aggregatedMeasure = AggregatedMeasure(
-        base_measure=timeMeasureLinearA, 
-        single_instance_agg_function='MIN')
-
-    rolling = RollingWindow(
-        window = 2,
-        center = True)
-    
-    var = measure_computer(aggregatedMeasure, dataframeLinear, log_config, time_rolling=rolling)
-
-    var[3] = datetime.timedelta(seconds=math.ceil(var[3].total_seconds()))
-    
-    assert var.size == 5
-    assert var.iloc[1] == datetime.timedelta(minutes=46, seconds=6)
-    assert var.iloc[3] == datetime.timedelta(days=365)
-
-def test_aggregated_compute_time_rolling_base_numeric_window_2_max(log_config):
-
-    IdCase1 = '1-364285768'
-    IdCase2 = '2-364285768'
-    IdCase3 = '3-364285768'
-    IdCase4 = '4-364285768'
-    IdCase5 = '5-364285768'
-
-    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
-    time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
-    time3 = datetime.datetime(2012, 4, 6, 16, 44, 7)
-    time4 = datetime.datetime(2013, 4, 6, 16, 44, 7)
-    time5 = datetime.datetime(2014, 5, 6, 16, 44, 7)
-    time6 = datetime.datetime(2015, 6, 6, 16, 44, 7)
-    time7 = datetime.datetime(2016, 6, 6, 16, 44, 7)
-    time8 = datetime.datetime(2017, 6, 6, 16, 44, 7)
-    time9 = datetime.datetime(2018, 6, 6, 16, 44, 7)
-    time10 = datetime.datetime(2040, 10, 21, 16, 44, 7)
-
-    data = {'case:concept:name':[IdCase1, IdCase1, IdCase2, IdCase2, IdCase3, IdCase3, IdCase4, IdCase4, IdCase5, IdCase5], 
-            'time:timestamp': [time1, time2, time3, time4, time5, time6, time7, time8, time9, time10],
-            'lifecycle:transition': ['In Progress', 'Awaiting Assignment','In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment']}
-
-    dataframeLinear = pd.DataFrame(data)
-
-    timeMeasureLinearA = TimeMeasure(
-        from_condition='`lifecycle:transition` == "In Progress"',
-        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
-        first_to=True)
-
-    aggregatedMeasure = AggregatedMeasure(
-        base_measure=timeMeasureLinearA, 
-        single_instance_agg_function='MAX')
-
-    rolling = RollingWindow(
-        window = 2,
-        center = True)
-    
-    var = measure_computer(aggregatedMeasure, dataframeLinear, log_config, time_rolling=rolling)
-    
-    assert var.size == 5
-    assert var.iloc[2] == datetime.timedelta(days=396)
-    assert var.iloc[4] == datetime.timedelta(days=8173)
+    assert pd.isnull(var.iloc[0])
+    assert var.iloc[1] == datetime.timedelta(days=730, minutes=46, seconds=6)
+    assert var.iloc[2] == datetime.timedelta(days=761)
