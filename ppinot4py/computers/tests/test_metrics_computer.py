@@ -1,3 +1,4 @@
+from pandas._libs.tslibs import NaT
 from ppinot4py.model import *
 from ppinot4py.computers import *
 from datetime import time
@@ -6,6 +7,7 @@ import datetime
 import pandas as pd
 import pytest
 import numpy as np
+import math
 
 
 @pytest.fixture
@@ -729,6 +731,101 @@ def test_data_computer_precondition_non_predefined_log_values(log_config):
 
     assert result.iloc[0] == 'Awaiting Assignment'
 
+def test_aggregated_compute_time_rolling_base_date_window_800_days_sum_to_cases(log_for_time, log_config):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA, 
+        single_instance_agg_function='SUM')
+
+    rolling = RollingWindow(
+      window = "800D",
+      apply_to_cases=True
+    )
+    
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_grouper=rolling)
+    
+    assert var.size == 3
+    assert var.iloc[0] == datetime.timedelta(days=365, minutes=46, seconds=6)
+    assert var.iloc[1] == datetime.timedelta(days=730, minutes=46, seconds=6)
+    assert var.iloc[2] == datetime.timedelta(days=761)
+
+def test_aggregated_compute_time_rolling_base_date_window_800_days_sum(log_for_time, log_config):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA, 
+        single_instance_agg_function='SUM')
+
+    rolling = RollingWindow(
+      window = "800D"
+    )
+    
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_grouper=rolling)
+
+    counts = var.value_counts()
+    
+    assert var.size == 1529
+    assert counts.index[0] == datetime.timedelta(days=365, minutes=46, seconds=6)
+    assert counts.index[1] == datetime.timedelta(days=365)
+    assert counts.index[2] == datetime.timedelta(days=730, minutes=46, seconds=6)
+    assert counts.index[3] == datetime.timedelta(days=761)
+
+def test_aggregated_compute_time_rolling_base_date_window_800_days_avg(log_for_time, log_config):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA, 
+        single_instance_agg_function='AVG')
+
+    rolling = RollingWindow(
+      window = "800D"
+    )
+    
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_grouper=rolling)
+
+    counts = var.value_counts()
+    
+    assert var.size == 1529
+    assert counts.index[0] == datetime.timedelta(days=365, minutes=46, seconds=6)
+    assert counts.index[1] == datetime.timedelta(days=365)
+    assert counts.index[2] == datetime.timedelta(days=365, minutes=23, seconds=3)
+    assert counts.index[3] == datetime.timedelta(days=380, hours=12)
+
+def test_aggregated_compute_time_rolling_base_numeric_window_3_center_sum(log_for_time, log_config):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA, 
+        single_instance_agg_function='SUM')
+
+    rolling = RollingWindow(
+      window = 2,
+      apply_to_cases=True
+    )
+    
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config, time_grouper=rolling)
+    
+    assert var.size == 3
+    assert pd.isnull(var.iloc[0])
+    assert var.iloc[1] == datetime.timedelta(days=730, minutes=46, seconds=6)
+    assert var.iloc[2] == datetime.timedelta(days=761)
 
 def test_time_computer_different_time_units_years(log_for_time):
 
@@ -776,3 +873,4 @@ def test_time_computer_different_time_units_days(log_for_time):
     assert var.iloc[0] == timeResult1
     assert pd.isnull(var.iloc[1])
     assert var.iloc[2] == timeResult2
+

@@ -12,6 +12,7 @@ from .measures import (
     AggregatedMeasure, 
     DerivedMeasure,
     BusinessDuration,
+    RollingWindow,
     TimeUnit
 )
 
@@ -32,6 +33,7 @@ __all__ = [
     'DerivedMeasure',
     'TimeUnit',
     'BusinessDuration',
+    'RollingWindow',
     'DataObjectState',
     'RuntimeState'
 ]

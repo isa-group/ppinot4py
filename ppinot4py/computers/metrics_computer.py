@@ -6,7 +6,7 @@ from ppinot4py.model import (
     AggregatedMeasure,
     DerivedMeasure
 )
-from ppinot4py.model.measures import _MeasureDefinition
+from ppinot4py.model.measures import _MeasureDefinition, RollingWindow
 
 import pandas as pd
 from pandas.api.types import is_datetime64_any_dtype as is_datetime
@@ -296,11 +296,15 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
     id_case = log_configuration.id_case
     time_column = log_configuration.time_column
 
+    if ((data_grouper is not None) and (len(data_grouper) > 0)) and (isinstance(time_grouper, RollingWindow)):
+        raise ValueError('A rolling time_grouper cannot be used with an AggregatedMeasure with group by')
+
     is_time = False
 
     base_values = measure_computer(base_measure, dataframe, log_configuration)
     
     case_end = dataframe.groupby(id_case)[time_column].last()
+
     
     if((filter_to_apply is not None) and filter_to_apply != ""):
         filter_condition = measure_computer(filter_to_apply, dataframe, log_configuration)
@@ -310,11 +314,11 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
         case_end = case_end[filter_condition]
 
     # Case end could also be configurable
-    internal_df = pd.DataFrame({'data':base_values, 'case_end':case_end})
+    internal_df = pd.DataFrame({'data':base_values, 'case_end':case_end}).sort_values(by='case_end')
 
     if not is_datetime(internal_df['case_end']):
         internal_df['case_end'] = pd.to_datetime(internal_df['case_end'], utc=True)
-    
+      
     if is_timedelta(internal_df['data'].dtype):
         internal_df['data'] = internal_df['data'].dt.total_seconds()
         #internal_df['data_seconds'] = internal_df['data_seconds'].fillna(0).astype(float)
@@ -337,16 +341,44 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
                 groupers.append(gr)
 
     if time_grouper is not None:
-        internal_time_grouper = copy(time_grouper)
-        internal_time_grouper.key = 'case_end'
-        groupers.append(internal_time_grouper)
+        temp_grouper = None
+        if isinstance(time_grouper, str):
+            temp_grouper = pd.Grouper(freq=time_grouper)
+        elif isinstance(time_grouper, RollingWindow):
+            if not time_grouper.apply_to_cases:
+                offset = pd.tseries.frequencies.to_offset(time_grouper.window)
+                temp_grouper = pd.Grouper(freq=offset.base)
+        else:
+            temp_grouper = time_grouper
 
+        if temp_grouper is not None:
+            internal_time_grouper = copy(temp_grouper)
+            internal_time_grouper.key = 'case_end'
+            groupers.append(internal_time_grouper)
+    
     if len(groupers) > 0:
         result_grouped = internal_df.groupby(groupers)
     else:
         result_grouped = internal_df
 
-    final_result = _apply_aggregation(operation, result_grouped)
+    if not isinstance(time_grouper, RollingWindow):
+        final_result = _apply_aggregation(operation, result_grouped)
+    else:
+        roll_window = time_grouper.window
+        roll_min_period = time_grouper.min_period
+        roll_closed = time_grouper.closed
+        if time_grouper.apply_to_cases:
+            rolling_result = result_grouped.rolling(roll_window, min_periods=roll_min_period, on='case_end', closed=roll_closed)
+            final_result = _apply_aggregation(operation, rolling_result)
+        else:
+            if operation.upper() == 'AVG':
+                rolling_sum = result_grouped.sum().rolling(roll_window, min_periods=roll_min_period, closed=roll_closed).sum()
+                rolling_count = result_grouped.count().rolling(roll_window, min_periods=roll_min_period, closed=roll_closed).sum()
+                final_result = rolling_sum / rolling_count
+            else:   
+                agg_result = _apply_aggregation(operation, result_grouped)
+                rolling_result = agg_result.rolling(roll_window, min_periods=roll_min_period, closed=roll_closed)
+                final_result = _apply_aggregation(operation, rolling_result)
 
     if(operation.upper() == "GROUPBY"):
         is_time = False
