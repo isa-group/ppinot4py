@@ -179,6 +179,16 @@ class DerivedMeasure(_MeasureDefinition):
         return f"the function {self.function_expression} where {variables}"
 
 class BusinessDuration():
+    """Business hours definition for work intervals.
+    
+    Args:
+    
+            - businessStart: Start time of the business work 
+            - businessEnd: End time of the business work 
+            - weekendList: List, in number, of the list of days that compose the weekend
+            - holidayList: List of days that are holidays
+            - unitHour: Unit of time of the result
+    """
     
     def __init__(self, business_start, business_end, weekend_list=[5,6], holiday_list=None, unit_hour='min'):
         super().__init__()
@@ -201,6 +211,23 @@ class BusinessDuration():
 
         return time_delta_type
 
+
+class GrouperDefinition():
+    """Extension of grouper definition for measures.
+    
+    Args:
+    
+            - grouper: Column name for the aggrupation
+            - interval: Interval of aggrupation
+            - timeunit: time unit of the aggrupation. Can be "d", "y", "m", "s"
+    """
+
+    def __init__(self, grouper=None, interval=None, time_unit="d"):
+        super().__init__()
+
+        self.grouper = grouper
+        self.interval = interval
+        self.time_unit = time_unit
 
  
         

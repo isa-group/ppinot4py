@@ -4,7 +4,8 @@ from ppinot4py.model import (
     DataMeasure, 
     TimeMeasure, 
     AggregatedMeasure,
-    DerivedMeasure
+    DerivedMeasure,
+    GrouperDefinition
 )
 from ppinot4py.model.measures import _MeasureDefinition
 
@@ -321,20 +322,27 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
         is_time = True
 
     groupers = []
-    if (data_grouper is not None):
-        if not isinstance(data_grouper, list):
-            data_grouper = [data_grouper]
-            
-        for gr in data_grouper:
-            if not isinstance(gr, str):
-                gr_key = gr.id
-                if gr_key is None:
-                    gr_key = 'group' + str(len(groupers))
-            
-                internal_df[gr_key] = measure_computer(gr, dataframe, log_configuration)
-                groupers.append(gr_key)
-            else:
-                groupers.append(gr)
+
+    if(type(data_grouper) is not GrouperDefinition):
+        if (data_grouper is not None):
+            if not isinstance(data_grouper, list):
+                data_grouper = [data_grouper]
+                
+            for gr in data_grouper:
+                if not isinstance(gr, str):
+                    gr_key = gr.id
+                    if gr_key is None:
+                        gr_key = 'group' + str(len(groupers))
+                
+                    internal_df[gr_key] = measure_computer(gr, dataframe, log_configuration)
+                    groupers.append(gr_key)
+                else:
+                    groupers.append(gr)
+    else:
+        target = data_grouper.grouper
+        interval = pd.Timedelta(data_grouper.interval, unit=data_grouper.time_unit)
+        opp = pd.cut(internal_df[target], np.arange(internal_df[target].min()-interval, internal_df[target].max()+interval, interval))
+        groupers.append(opp)
 
     if time_grouper is not None:
         internal_time_grouper = copy(time_grouper)
@@ -363,6 +371,9 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
         else:
             final_result = final_result['data']
 
+    if(type(data_grouper) is GrouperDefinition):
+        final_result = final_result[final_result != "0 days 00:00:00"]
+        
     return final_result
 
 def derived_compute(dataframe, measure, log_configuration, time_grouper=None):
