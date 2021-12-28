@@ -219,7 +219,7 @@ class GrouperDefinition():
     
             - grouper: Column name for the aggrupation
             - interval: Interval of aggrupation
-            - timeunit: time unit of the aggrupation. Can be "d", "y", "m", "s"
+            - timeunit: Time unit of the aggrupation. Can be "d", "h", "m", "s"
     """
 
     def __init__(self, interval=None, time_unit="d"):
