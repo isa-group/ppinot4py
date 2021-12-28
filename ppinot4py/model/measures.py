@@ -222,10 +222,9 @@ class GrouperDefinition():
             - timeunit: time unit of the aggrupation. Can be "d", "y", "m", "s"
     """
 
-    def __init__(self, grouper=None, interval=None, time_unit="d"):
+    def __init__(self, interval=None, time_unit="d"):
         super().__init__()
 
-        self.grouper = grouper
         self.interval = interval
         self.time_unit = time_unit
 

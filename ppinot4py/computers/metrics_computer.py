@@ -339,9 +339,8 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
                 else:
                     groupers.append(gr)
     else:
-        target = data_grouper.grouper
         interval = pd.Timedelta(data_grouper.interval, unit=data_grouper.time_unit)
-        opp = pd.cut(internal_df[target], np.arange(internal_df[target].min()-interval, internal_df[target].max()+interval, interval))
+        opp = pd.cut(internal_df['case_end'], np.arange(internal_df['case_end'].min()-interval, internal_df['case_end'].max()+interval, interval))
         groupers.append(opp)
 
     if time_grouper is not None:

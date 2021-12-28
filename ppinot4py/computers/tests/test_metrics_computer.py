@@ -29,6 +29,36 @@ def log_for_time():
 
     return dataframeLinear
 
+@pytest.fixture
+def log_for_time_extended():
+    IdCase1 = '1-364285768'
+    IdCase2 = '2-364285768'
+    IdCase3 = '3-364285768'
+    IdCase4 = '4-364285768'
+
+    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
+    time2 = datetime.datetime(2011, 3, 31, 17, 45, 48)
+
+    time3 = datetime.datetime(2012, 4, 6, 16, 44, 7)
+    time4 = datetime.datetime(2013, 4, 6, 16, 44, 7)
+
+    time5 = datetime.datetime(2014, 5, 6, 16, 44, 7)
+    time6 = datetime.datetime(2015, 6, 6, 16, 44, 7)
+
+    time7 = datetime.datetime(2013, 5, 6, 16, 44, 7)
+    time8 = datetime.datetime(2017, 10, 10, 16, 44, 7)
+
+    time9 = datetime.datetime(2011, 2, 1, 16, 44, 7)
+    time10 = datetime.datetime(2019, 1, 12, 16, 44, 7)
+
+    data = {'case:concept:name': [IdCase1, IdCase1, IdCase1, IdCase1, IdCase3, IdCase3, IdCase2, IdCase2, IdCase4, IdCase4],
+            'time:timestamp': [time1, time2, time3, time4, time5, time6,time7,time8,time9,time10],
+            'lifecycle:transition': ['In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment']}
+
+    dataframeLinear = pd.DataFrame(data)
+
+    return dataframeLinear
+
 
 @pytest.fixture
 def log_config():
@@ -776,3 +806,104 @@ def test_time_computer_different_time_units_days(log_for_time):
     assert var.iloc[0] == timeResult1
     assert pd.isnull(var.iloc[1])
     assert var.iloc[2] == timeResult2
+
+def test_aggregated_measure_grouper_definition(log_for_time):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"',
+        first_to=True)
+
+    intervalo = 1000
+
+    operation = GrouperDefinition(
+        interval=intervalo)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA,
+        single_instance_agg_function='SUM',
+        grouper=operation)
+
+    timeResult1 = datetime.timedelta(days=365, minutes=46, seconds=6)
+    timeResult2 = datetime.timedelta(days=396)
+
+    var = measure_computer(aggregatedMeasure, log_for_time,
+                           LogConfiguration(), time_grouper=pd.Grouper(freq='1Y'))
+
+    timeCheck1 = datetime.datetime(2008, 7, 4, 17, 45, 48)
+    timeCheck2 = datetime.datetime(2011, 3, 31, 17, 45, 48)
+    convertedTimeLeft = var.index[0][0].left.to_pydatetime()
+    convertedTimeRight = var.index[0][0].right.to_pydatetime()
+
+    assert timeCheck1 == convertedTimeLeft
+    assert timeCheck2 == convertedTimeRight
+    assert var.size == 3
+    assert var.iloc[0] == timeResult1
+    assert var.iloc[2] == timeResult2
+
+def test_aggregated_measure_grouper_definition_extended_dataframe(log_for_time_extended):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"',
+        first_to=True)
+
+    intervalo = 1000
+
+    operation = GrouperDefinition(
+        interval=intervalo)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA,
+        single_instance_agg_function='SUM',
+        grouper=operation)
+
+    timeResult1 = datetime.timedelta(days=365, minutes=46, seconds=6)
+    timeResult2 = datetime.timedelta(days=1618)
+
+    var = measure_computer(aggregatedMeasure, log_for_time_extended,
+                           LogConfiguration(), time_grouper=pd.Grouper(freq='1Y'))
+
+    timeCheck1 = datetime.datetime(2010, 7, 11, 16, 44, 7)
+    timeCheck2 = datetime.datetime(2013, 4, 6, 16, 44, 7)
+    convertedTimeLeft = var.index[0][0].left.to_pydatetime()
+    convertedTimeRight = var.index[0][0].right.to_pydatetime()
+
+    assert timeCheck1 == convertedTimeLeft
+    assert timeCheck2 == convertedTimeRight
+    assert var.size == 4
+    assert var.iloc[0] == timeResult1
+    assert var.iloc[2] == timeResult2
+
+def test_aggregated_measure_normal_grouper(log_for_time_extended):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"',
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA,
+        single_instance_agg_function='SUM',
+        grouper=[DataMeasure("case:concept:name")])
+
+    timeResult1 = datetime.timedelta(days=365, minutes=46, seconds=6)
+    timeResult2 = datetime.timedelta(days=1618)
+    timeResult3 = datetime.timedelta(days=396)
+
+    var = measure_computer(aggregatedMeasure, log_for_time_extended,
+                           LogConfiguration(), time_grouper=pd.Grouper(freq='1Y'))
+
+    timeCheck1 = "1-364285768"
+    timeCheck2 = "2-364285768"
+
+    convertedTimeLeft = var.index[0][0]
+    convertedTimeRight = var.index[1][0]
+
+    assert timeCheck1 == convertedTimeLeft
+    assert timeCheck2 == convertedTimeRight
+    assert var.size == 4
+    assert var.iloc[0] == timeResult1
+    assert var.iloc[1] == timeResult2
+    assert var.iloc[2] == timeResult3
+
