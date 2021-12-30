@@ -105,3 +105,4 @@ venv.bak/
 
 # VS code settings
 .vscode
+test.py

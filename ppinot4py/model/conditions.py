@@ -59,9 +59,6 @@ class TimeInstantCondition():
         else:
             return f"{self.changes_to_state} - {self.applies_to} - {self.activity_name}"
 
-
-
-
 class SeriesCondition():
 
     def __init__(self, series):
