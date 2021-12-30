@@ -1,4 +1,5 @@
 from ppinot4py.model import *
+import pytest
 
 def test_count_text():
     c = CountMeasure("ACT == 'open'")
@@ -22,3 +23,7 @@ def test_derived_text():
     t = TimeMeasure("ACT == 'open'", "ACT == 'close'", first_to=True)
     d = DerivedMeasure("c/t", {"c": c, "t": t})
     assert f"{d}" == "the function c/t where c is the number of times ACT == 'open', t is the duration between the first time instant when ACT == 'open' and the first time instant when ACT == 'close'"
+
+def test_invalid_rolling_window():
+    with pytest.raises(ValueError):
+        RollingWindow(window=2)

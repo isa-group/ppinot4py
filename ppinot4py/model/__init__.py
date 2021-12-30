@@ -13,7 +13,9 @@ from .measures import (
     DerivedMeasure,
     BusinessDuration,
     TimeUnit,
-    GrouperDefinition
+    GrouperDefinition,
+    RollingWindow,
+    TimeUnit
 )
 
 from .states import (
@@ -33,6 +35,7 @@ __all__ = [
     'DerivedMeasure',
     'TimeUnit',
     'BusinessDuration',
+    'RollingWindow',
     'DataObjectState',
     'RuntimeState',
     'GrouperDefinition'
