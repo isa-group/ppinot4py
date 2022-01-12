@@ -18,7 +18,8 @@ from .measures import (
 
 from .states import (
     DataObjectState,
-    RuntimeState
+    RuntimeState,
+    ComplexState
 )
 
 __all__ = [
@@ -35,5 +36,6 @@ __all__ = [
     'BusinessDuration',
     'RollingWindow',
     'DataObjectState',
-    'RuntimeState'
+    'RuntimeState',
+    'ComplexState'
 ]

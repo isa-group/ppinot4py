@@ -3,10 +3,6 @@ import pandas as pd
 import pytest
 from ppinot4py.model import RuntimeState, TimeInstantCondition, AppliesTo
 from ppinot4py.computers import condition_computer
-from business_duration import businessDuration
-import holidays as pyholidays
-from datetime import time
-from itertools import repeat
 
 
 def test_time_instant_process_start():
@@ -117,33 +113,6 @@ def test_time_instant_activity_end():
 
         assert (result.values == result_expected).all()
 
-
-def test_time_instant_activity_custom():
-
-        IdCase1 = '1-364285768'
-        IdCase2 = '1-364285769'
-
-        time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
-        time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
-        time3 = datetime.datetime(2010, 4, 6, 16, 44, 7)
-        time4 = datetime.datetime(2012, 4, 6, 16, 44, 7)
-        time5 = datetime.datetime(2012, 5, 1, 16, 44, 7)
-        time6 = datetime.datetime(2013, 5, 1, 16, 44, 7)
-
-        data = {'case:concept:name': [IdCase1, IdCase1, IdCase1, IdCase2, IdCase2, IdCase2], 
-                'concept:name': ['Queued', 'Queued', 'Not queued', 'Queued', 'Queued', 'Not queued'],
-                'time:timestamp': [time1, time2, time3, time4, time5, time6],
-                'lifecycle:transition': ['Assigned', 'Awaiting Assignment','Completed', 'Assigned', 'Awaiting Assignment', 'Completed']}
-        
-        dataframeLinear = pd.DataFrame(data)
-
-        precondition = TimeInstantCondition("'Awaiting Assignment'", AppliesTo.ACTIVITY, "'Queued'")
-        result = condition_computer(dataframeLinear, "case:concept:name", precondition, 'concept:name', 'lifecycle:transition')
-        
-        result_expected = [False, True, False, False, True, False]
-
-        assert (result.values == result_expected).all()
-
 def test_time_instant_process_activity_no_lifecycle_END():
 
         IdCase1 = '1-364285768'
@@ -161,7 +130,8 @@ def test_time_instant_process_activity_no_lifecycle_END():
         data = {'case:concept:name': [IdCase1, IdCase2, IdCase3, IdCase4, IdCase5], 
                 'concept:name': ['Queued', 'Queued', 'Not queued', 'Queued', 'Not queued'],
                 'time:timestamp': [time1, time2, time3, time4, time5]
-        }
+                }
+
 
         dataframeLinear = pd.DataFrame(data)
 
@@ -189,7 +159,8 @@ def test_time_instant_process_activity_no_lifecycle_START_error():
         data = {'case:concept:name': [IdCase1, IdCase2, IdCase3, IdCase4, IdCase5], 
                 'concept:name': ['Queued', 'Queued', 'Not queued', 'Queued', 'Not queued'],
                 'time:timestamp': [time1, time2, time3, time4, time5]
-        }
+                }
+        
 
         dataframeLinear = pd.DataFrame(data)
 

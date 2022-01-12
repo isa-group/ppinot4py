@@ -3,8 +3,11 @@ import enum
 class DataObjectState():
     """Basic state of a condition.
     
-    Args:    
-            - name: String representation of a condition
+    Parameters:  
+    ----------  
+    
+    name: String representation of a condition
+    
     """
     
     def __init__(self, name):
@@ -14,10 +17,23 @@ class DataObjectState():
         return "%s" % (self.name)
 
 class ComplexState():    
-        def __init__(self, first, last, state_type):
-            self.first = first
-            self.last = last
-            self.type = state_type
+    """
+    DEFINIR LA DESCRIPCION
+
+    Parameters
+    ----------
+    first: Primera condicion que debe de cumplirse, de tipo TimeInstantCondition
+
+    last: Segunda condicion que debe de cumplirse, de tipo TimeInstantCondition
+    
+    type:
+
+    """  
+
+    def __init__(self, first, last, state_type):
+        self.first = first #TIMEINSTANTCONDITION
+        self.last = last #TIMEINSTANTCONDITION Puede ser recursivo porque el last puede ser otro Complex
+        self.type = state_type # Es de tipo State-Type
 
 class RuntimeState():
 

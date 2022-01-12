@@ -1,4 +1,3 @@
-from pandas._libs.tslibs import NaT
 from ppinot4py.model import *
 from ppinot4py.computers import *
 from datetime import time
@@ -7,7 +6,7 @@ import datetime
 import pandas as pd
 import pytest
 import numpy as np
-import math
+
 
 
 @pytest.fixture
@@ -677,59 +676,6 @@ def test_time_cyclic_AVGInstances_businessDuration(log_config):
 
     assert var == timeResult
 
-
-def test_data_computer_precondition_predefined_log_values(log_config):
-
-    precondition = TimeInstantCondition(
-        "'Awaiting Assignment'", AppliesTo.ACTIVITY, "'Queued'")
-
-    dataMeasure = DataMeasure(
-        data_content_selection="lifecycle:transition",
-        precondition=precondition,
-        first=False)
-
-    IdCase1 = '1-364285768'
-    IdCase2 = '1-364285769'
-
-    data = {'case:concept:name': [IdCase1, IdCase1, IdCase1, IdCase2, IdCase1],
-            'concept:name': ['Queued', 'Queued', 'Not queued', 'Queued', 'Not queued'],
-            'lifecycle:transition': ['In Progress', 'Awaiting Assignment', 'Completed', 'Awaiting Assignment', 'Completed']}
-
-    dataframeLinear = pd.DataFrame(data)
-
-    result = measure_computer(dataMeasure, dataframeLinear, log_config)
-
-    assert result.iloc[0] == 'Awaiting Assignment'
-
-
-def test_data_computer_precondition_non_predefined_log_values(log_config):
-
-    precondition = TimeInstantCondition(
-        "'Awaiting Assignment'", AppliesTo.ACTIVITY, "'Queued'")
-
-    log = LogConfiguration(
-        id_case='case:concept:name',
-        time_column='time:timestamp',
-        transition_column='lifecycle:transition:transition',
-        activity_column='concept:name:non:predefined')
-
-    dataMeasure = DataMeasure(
-        data_content_selection="lifecycle:transition:transition",
-        precondition=precondition,
-        first=False)
-
-    IdCase1 = '1-364285768'
-    IdCase2 = '1-364285769'
-
-    data = {'case:concept:name': [IdCase1, IdCase1, IdCase1, IdCase2, IdCase1],
-            'concept:name:non:predefined': ['Queued', 'Queued', 'Not queued', 'Queued', 'Not queued'],
-            'lifecycle:transition:transition': ['In Progress', 'Awaiting Assignment', 'Completed', 'Awaiting Assignment', 'Completed']}
-
-    dataframeLinear = pd.DataFrame(data)
-
-    result = measure_computer(dataMeasure, dataframeLinear, log)
-
-    assert result.iloc[0] == 'Awaiting Assignment'
 
 def test_aggregated_compute_time_rolling_base_date_window_800_days_sum_to_cases(log_for_time, log_config):
 

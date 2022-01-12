@@ -1,5 +1,5 @@
 from numpy import true_divide
-from ppinot4py.model import AppliesTo, RuntimeState, TimeInstantCondition
+from ppinot4py.model import AppliesTo, RuntimeState, TimeInstantCondition, DataObjectState, ComplexState
 import pandas as pd
 
 
@@ -25,21 +25,29 @@ def condition_computer(dataframe, id_case, condition, activity_column, transitio
 
 def _time_instant_condition_resolve(dataframe, id_case, condition: TimeInstantCondition, activity_column, transition_column):
     TimeInstantCondition(RuntimeState.START, AppliesTo.PROCESS)
-
-    if condition.applies_to == AppliesTo.DATA:
-        return _time_instant_condition_data_resolve(dataframe, id_case, str(condition.changes_to_state))
-    elif condition.applies_to == AppliesTo.PROCESS:
-        return _time_instant_condition_process_resolve(dataframe, id_case, condition.changes_to_state)
-    elif condition.applies_to == AppliesTo.ACTIVITY:
-        condition_checked = check_State(condition.changes_to_state)
-        if(check_column_existence(dataframe, activity_column, transition_column)):
-            data_condition = f'`{activity_column}` == {condition.activity_name} and `{transition_column}` == {condition_checked}'
-            return _time_instant_condition_data_resolve(dataframe, id_case, data_condition)
-        elif(check_end_condition(condition.changes_to_state)):
-            data_condition = f'`{activity_column}` == {condition.activity_name}'
-            return _time_instant_condition_data_resolve(dataframe, id_case, data_condition)
-        else: 
-            raise ValueError("The activity or transition column don't exists in log")
+    
+    if type(condition.changes_to_state) is DataObjectState:
+        if condition.applies_to == AppliesTo.DATA:
+            return _time_instant_condition_data_resolve(dataframe, id_case, str(condition.changes_to_state))
+    elif type(condition.changes_to_state) is RuntimeState:
+        if condition.applies_to == AppliesTo.PROCESS:
+            return _time_instant_condition_process_resolve(dataframe, id_case, condition.changes_to_state)
+        elif condition.applies_to == AppliesTo.ACTIVITY:
+            condition_checked = check_State(condition.changes_to_state)
+            if(check_column_existence(dataframe, activity_column, transition_column)):
+                data_condition = f'`{activity_column}` == {condition.activity_name} and `{transition_column}` == {condition_checked}'
+                return _time_instant_condition_data_resolve(dataframe, id_case, data_condition)
+            elif(check_end_condition(condition.changes_to_state)):
+                data_condition = f'`{activity_column}` == {condition.activity_name}'
+                return _time_instant_condition_data_resolve(dataframe, id_case, data_condition)
+            else: 
+                raise ValueError("The activity or transition column don't exists in log")
+    elif type(condition.changes_to_state) is ComplexState:
+        data_condition = ""
+        first = condition.changes_to_state.first
+        second = condition.changes_to_state.last
+        complexType = condition.changes_to_state.type
+        return _time_instant_condition_data_resolve(dataframe, id_case, data_condition)
     else:
         raise ValueError("invalid applies to condition " + str(condition.applies_to))
 
