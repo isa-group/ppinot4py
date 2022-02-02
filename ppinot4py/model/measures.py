@@ -1,7 +1,6 @@
 from .conditions import TimeInstantCondition
 import datetime
 import calendar
-import holidays as pyholidays
 
 def _time_instance_auto_wrap(condition):
     if condition is None:
