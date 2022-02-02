@@ -56,9 +56,9 @@ class TimeInstantCondition():
         if self.applies_to == AppliesTo.DATA:
             return f"{self.changes_to_state}"
         elif self.applies_to == AppliesTo.PROCESS:
-            return f"{self.changes_to_state} - {self.applies_to}"
+            return f"{self.changes_to_state} the {self.applies_to.name}"
         else:
-            return f"{self.changes_to_state} - {self.applies_to} - {self.activity_name}"
+            return f"{self.changes_to_state} the {self.applies_to.name} with name {self.activity_name}"
 
 
 

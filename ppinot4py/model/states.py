@@ -23,6 +23,13 @@ class RuntimeState():
 
     def __init__(self, state):
         self.state = state
+    
+    def __repr__(self) -> str:
+        if(self.state == 'START'):
+            return f"when starts"
+        else:
+            return "when  ends"
+        
   
 RuntimeState.START = RuntimeState('START')
 RuntimeState.END = RuntimeState('END')

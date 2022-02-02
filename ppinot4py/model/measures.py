@@ -13,6 +13,7 @@ def _time_instance_auto_wrap(condition):
     return condition
 
 def _name_of_aggregation(agg):
+    agg = agg.upper()
     if agg == "AVG":
         return "average"
     if agg == "MIN":

@@ -70,3 +70,14 @@ def test_data_first_text():
         data_content_selection="lifecycle:transition", 
         first=True)
     assert f"{d}" == "the first value of lifecycle:transition"
+
+def test_aggregated_text_lower_case():
+    a = AggregatedMeasure(CountMeasure("concept:name=='Appeal to Judge'"), 'avg')
+    assert f"{a}" == "the average of the number of times concept:name=='Appeal to Judge'"
+
+
+def test_aggregated_text_time_instant_condition():
+    b = AggregatedMeasure(CountMeasure(TimeInstantCondition(RuntimeState.START, AppliesTo.ACTIVITY, "Appeal to Judge")), 'avg')
+    assert f"{b}" == "the average of the number of times when starts the ACTIVITY with name Appeal to Judge"
+
+
