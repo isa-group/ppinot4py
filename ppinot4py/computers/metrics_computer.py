@@ -295,6 +295,7 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
     data_grouper = measure.grouper
     id_case = log_configuration.id_case
     time_column = log_configuration.time_column
+    period_reference_point = measure.period_reference_point
 
     if ((data_grouper is not None) and (len(data_grouper) > 0)) and (isinstance(time_grouper, RollingWindow)):
         raise ValueError('A rolling time_grouper cannot be used with an AggregatedMeasure with group by')
@@ -303,19 +304,24 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
 
     base_values = measure_computer(base_measure, dataframe, log_configuration)
     
-    case_end = dataframe.groupby(id_case)[time_column].last()
-
+    # LO NUEVO
+    if(period_reference_point is None):
+        case_end = dataframe.groupby(id_case)[time_column].last()
+    else:
+        case_end = data_compute(dataframe, period_reference_point, log_configuration)
     
     if((filter_to_apply is not None) and filter_to_apply != ""):
         filter_condition = measure_computer(filter_to_apply, dataframe, log_configuration)
+        
         # We assume the filtered_condition is fine. Maybe we could do
         # some sanity checking here.
         base_values = base_values[filter_condition]
         case_end = case_end[filter_condition]
 
+ 
+
     # Case end could also be configurable
     internal_df = pd.DataFrame({'data':base_values, 'case_end':case_end}).sort_values(by='case_end')
-
     if not is_datetime(internal_df['case_end']):
         internal_df['case_end'] = pd.to_datetime(internal_df['case_end'], utc=True)
       

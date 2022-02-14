@@ -134,12 +134,13 @@ class AggregatedMeasure(_MeasureDefinition):
             - filter_to_apply: Measure applied to our base_measure to filter specific values. The measure
                                must resolve to either true or false.
     """
-    def __init__(self, base_measure, single_instance_agg_function, grouper=None, filter_to_apply=None):
+    def __init__(self, base_measure, single_instance_agg_function, grouper=None, filter_to_apply=None, period_reference_point=None):
         super().__init__()
   
         self.base_measure = base_measure
         self.filter_to_apply = filter_to_apply
         self.single_instance_agg_function = single_instance_agg_function
+        self.period_reference_point = period_reference_point
         if grouper is None:
             self.grouper = []
         elif isinstance(grouper, _MeasureDefinition):

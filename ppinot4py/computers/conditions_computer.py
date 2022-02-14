@@ -15,7 +15,6 @@ def condition_computer(dataframe, id_case, condition, activity_column, transitio
 
     if(type(condition) == TimeInstantCondition):
         filteredSeries = _time_instant_condition_resolve(dataframe, id_case, condition, activity_column, transition_column)
-        
     #In revision    
     if(type(condition) == pd.Series):
         filteredSeries = condition
@@ -56,11 +55,10 @@ def _time_instant_condition_process_resolve(dataframe, id_case, changes_to_state
 
 def _time_instant_condition_data_resolve(dataframe, id_case, var):
     condition = dataframe.query(var)
-
     condition_in_series = pd.Series(dataframe.index.isin(condition.index))
-
+    
     condition_in_series_prev = condition_in_series.groupby(dataframe[id_case]).shift(+1).fillna(False)
-
+    
     final_evaluation = ((condition_in_series) & (~condition_in_series_prev))
 
     # id_next = dataframe[id_case].shift(-1)
