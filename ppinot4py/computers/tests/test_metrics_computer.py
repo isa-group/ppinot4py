@@ -982,3 +982,31 @@ def test_aggregated_compute_data_measure_is_first_true_not_queued(aggregated_mea
     assert var.iloc[0] == timeResult1
     assert pd.isnull(var.iloc[1])
     assert var.iloc[2] == timeResult2
+
+def test_aggregated_compute_data_measure_is_first_true_not_queued_one_value(aggregated_measure_data_condition_not_queued):
+
+    IdCase1 = '1-364285768'
+    IdCase2 = '2-364285768'
+    IdCase3 = '3-364285768'
+
+    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
+    time2 = datetime.datetime(2011, 3, 31, 17, 45, 48)
+    time3 = datetime.datetime(2012, 4, 6, 16, 44, 7)
+    time4 = datetime.datetime(2013, 4, 6, 16, 44, 7)
+    time5 = datetime.datetime(2014, 5, 6, 16, 44, 7)
+    time6 = datetime.datetime(2015, 6, 6, 16, 44, 7)
+
+    data = {'case:concept:name': [IdCase1, IdCase1, IdCase2, IdCase2, IdCase3, IdCase3],
+        'time:timestamp': [time1, time2, time3, time4, time5, time6],
+        'concept:name': ['Queued', 'Queued', 'Not queued', 'Queued', 'Queued', 'Not queued'],
+        'lifecycle:transition': ['In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment']}
+
+    dataframeLinear = pd.DataFrame(data)
+
+    var = measure_computer(aggregated_measure_data_condition_not_queued, dataframeLinear,
+                            LogConfiguration(), time_grouper=pd.Grouper(freq='1Y'))
+
+    timeResult1 = datetime.timedelta(days=396)
+
+    assert var.size == 1
+    assert var.iloc[0] == timeResult1
