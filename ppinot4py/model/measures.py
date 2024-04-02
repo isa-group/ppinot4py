@@ -22,8 +22,7 @@ def _name_of_aggregation(agg):
         return "sum"
 
 class TimeUnit(enum.Enum):
-    YEAR = "Y"
-    MONTH = "M"
+    WEEK = "W"
     DAY = "D"
     HOUR = "h"
     MINUTE = "m"

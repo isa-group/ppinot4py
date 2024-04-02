@@ -218,7 +218,10 @@ def _apply_aggregation(operation, grouped_df):
         raise ValueError('Aggregation function must be a string: sum, min, max, avg or groupby')
 
     if(operation.upper() == 'SUM'):
-        result = grouped_df.sum(min_count=1)
+        if isinstance(grouped_df, pd.core.window.rolling.Rolling):
+            result = grouped_df.sum()
+        else:
+            result = grouped_df.sum(min_count=1)
 
     elif(operation.upper() == "MIN"):
         result = grouped_df.min()
@@ -362,7 +365,7 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
         result_grouped = internal_df
 
     if not isinstance(time_grouper, RollingWindow):
-        final_result = _apply_aggregation(operation, result_grouped)
+        final_result = _apply_aggregation(operation, result_grouped["data"])
     else:
         roll_window = time_grouper.window
         roll_min_period = time_grouper.min_period
@@ -383,17 +386,17 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
     if(operation.upper() == "GROUPBY"):
         is_time = False
 
-    if len(final_result) > 1:
+    if isinstance(final_result, pd.DataFrame):
+        final_result = final_result['data']
+
+    if isinstance(final_result, pd.Series):   
         if is_time == True:
-            final_result = final_result['data'].apply(lambda x: datetime.timedelta(seconds = x) if not np.isnan(x) else np.nan)
-        else:
-            final_result = final_result['data']
-        #final_result = final_result.drop('case_end', axis=0, errors='ignore')
+            final_result = final_result.apply(lambda x: datetime.timedelta(seconds = x) if not np.isnan(x) else np.nan)
+            #final_result = final_result.drop('case_end', axis=0, errors='ignore')
     else:
         if is_time == True:
-            final_result = datetime.timedelta(seconds = final_result['data']) if not np.isnan(final_result['data']) else np.nan
-        else:
-            final_result = final_result['data']
+            final_result = datetime.timedelta(seconds = final_result) if not np.isnan(final_result) else np.nan
+
 
     return final_result
 

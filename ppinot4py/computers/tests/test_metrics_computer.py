@@ -60,6 +60,8 @@ def test_aggregated_compute_time_grouped(log_for_time, log_config):
     assert var.iloc[2] == datetime.timedelta(days=365)
 
 
+
+
 def test_aggregated_compute_time_no_group(log_for_time, log_config):
 
     timeMeasureLinearA = TimeMeasure(
@@ -74,6 +76,21 @@ def test_aggregated_compute_time_no_group(log_for_time, log_config):
     var = measure_computer(aggregatedMeasure, log_for_time, log_config)
 
     assert var == datetime.timedelta(days=1126, minutes=46, seconds=6)
+
+def test_aggregated_compute_time_no_group_min(log_for_time, log_config):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"',
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA,
+        single_instance_agg_function='MIN')
+
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config)
+
+    assert var == datetime.timedelta(days=365)    
 
 
 def test_derived_compute_time_condition(log_for_time, log_config):
@@ -827,20 +844,20 @@ def test_aggregated_compute_time_rolling_base_numeric_window_3_center_sum(log_fo
     assert var.iloc[1] == datetime.timedelta(days=730, minutes=46, seconds=6)
     assert var.iloc[2] == datetime.timedelta(days=761)
 
-def test_time_computer_different_time_units_years(log_for_time):
+def test_time_computer_different_time_units_weeks(log_for_time):
 
     timeMeasureLinearA = TimeMeasure(
         from_condition='`lifecycle:transition` == "In Progress"',
         to_condition='`lifecycle:transition` == "Awaiting Assignment"',
         first_to=True,
-        time_unit=TimeUnit.YEAR)
+        time_unit=TimeUnit.WEEK)
 
     aggregatedMeasure = AggregatedMeasure(
         base_measure=timeMeasureLinearA,
         single_instance_agg_function='SUM')
 
-    timeResult1 = 0.9994237086015151
-    timeResult2 = 0.9993360575508052
+    timeResult1 = 52.14743055555556
+    timeResult2 = 52.142857142857146
 
     var = measure_computer(aggregatedMeasure, log_for_time,
                            LogConfiguration(), time_grouper=pd.Grouper(freq='1Y'))
