@@ -4,7 +4,8 @@ from ppinot4py.model import (
     DataMeasure, 
     TimeMeasure, 
     AggregatedMeasure,
-    DerivedMeasure
+    DerivedMeasure,
+    GrouperDefinition
 )
 from ppinot4py.model.measures import _MeasureDefinition, RollingWindow
 
@@ -299,8 +300,9 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
     id_case = log_configuration.id_case
     time_column = log_configuration.time_column
 
-    if ((data_grouper is not None) and (len(data_grouper) > 0)) and (isinstance(time_grouper, RollingWindow)):
-        raise ValueError('A rolling time_grouper cannot be used with an AggregatedMeasure with group by')
+    if(type(data_grouper) is not GrouperDefinition):
+        if ((data_grouper is not None) and (len(data_grouper) > 0)) and (isinstance(time_grouper, RollingWindow)):
+            raise ValueError('A rolling time_grouper cannot be used with an AggregatedMeasure with group by')
 
     is_time = False
 
@@ -328,20 +330,26 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
         is_time = True
 
     groupers = []
-    if (data_grouper is not None):
-        if not isinstance(data_grouper, list):
-            data_grouper = [data_grouper]
-            
-        for gr in data_grouper:
-            if not isinstance(gr, str):
-                gr_key = gr.id
-                if gr_key is None:
-                    gr_key = 'group' + str(len(groupers))
-            
-                internal_df[gr_key] = measure_computer(gr, dataframe, log_configuration)
-                groupers.append(gr_key)
-            else:
-                groupers.append(gr)
+
+    if(type(data_grouper) is not GrouperDefinition):
+        if (data_grouper is not None):
+            if not isinstance(data_grouper, list):
+                data_grouper = [data_grouper]
+                
+            for gr in data_grouper:
+                if not isinstance(gr, str):
+                    gr_key = gr.id
+                    if gr_key is None:
+                        gr_key = 'group' + str(len(groupers))
+                
+                    internal_df[gr_key] = measure_computer(gr, dataframe, log_configuration)
+                    groupers.append(gr_key)
+                else:
+                    groupers.append(gr)
+    else:
+        interval = pd.Timedelta(data_grouper.interval, unit=data_grouper.time_unit)
+        opp = pd.cut(internal_df['case_end'], np.arange(internal_df['case_end'].min()-interval, internal_df['case_end'].max()+interval, interval))
+        groupers.append(opp)
 
     if time_grouper is not None:
         temp_grouper = None
@@ -398,6 +406,9 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
             final_result = datetime.timedelta(seconds = final_result) if not np.isnan(final_result) else np.nan
 
 
+    if(type(data_grouper) is GrouperDefinition):
+        final_result = final_result[final_result != "0 days 00:00:00"]
+        
     return final_result
 
 def derived_compute(dataframe, measure, log_configuration, time_grouper=None):
