@@ -216,10 +216,12 @@ A time measure measure the time between two time instants. It is composed of the
   * `Linear`: Counts the time elapsed between the first _A_ and the last _B_
   * `Cyclic`: Counts the time elapsed between all pairs of _A_ and _B_
 * `single_instance_agg_function`: Type of aggregation we want to apply to our data, it only applies to cyclic measures. The default value is `SUM`. There are 5 types of operations:
-  * `SUM:` The sum of all _A_ to _B_ pairs
+  * `SUM:` Sum of all _A_ to _B_ pairs
   * `MIN:` Minimum time value between the _A_ to _B_ pairs
   * `MAX:` Maximum time value between the _A_ to _B_ pairs
-  * `AVG:` The average time between all _A_ to _B_ pairs
+  * `AVG:` Average time between all _A_ to _B_ pairs
+  * `MEDIAN:` Median time between all _A_ to _B_ pairs
+  * `pXX:` Percentile XX of all _A_ to _B_ pairs. `XX` can be any integer between 1..99
   * `GROUPBY:` Raw grouped dataframe with no operation applied
 * `first_to:` Only applies to linear measures and it indicates if we want to take the first occurrence of 'B' condition or the last. By default it is False.
 * `precondition:` Condition applied before the calculation of A and B.
@@ -319,6 +321,8 @@ An aggregated measure aggregates the results obtained from any of the three prev
   * `MIN:` Minimum value
   * `MAX:` Maximum value
   * `AVG:` Average of all values
+  * `MEDIAN:` Median of all values
+  * `pXX:` Percentile XX of all values. `XX` can be any integer between 1..99
   * `GROUPBY:` Raw grouped dataframe with no operation applied
 * `data_grouper:` List of measures to group by the base measure.
 * `filter_to_apply:` Filter to apply to the base_measure. It is a base measure that returns a boolean value
