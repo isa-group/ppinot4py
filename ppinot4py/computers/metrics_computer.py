@@ -13,6 +13,7 @@ from pandas.api.types import is_datetime64_any_dtype as is_datetime
 from pandas.api.types import is_timedelta64_dtype as is_timedelta
 from pandas.api.types import is_numeric_dtype, is_bool_dtype
 import numpy as np
+import re
 from copy import copy
 import datetime
 
@@ -39,7 +40,7 @@ class LogConfiguration():
         self.activity_column = activity_column
 
 
-def measure_computer(measure, dataframe, log_configuration: LogConfiguration = None, time_grouper = None):
+def measure_computer(measure: _MeasureDefinition, dataframe: pd.DataFrame, log_configuration: LogConfiguration | None = None, time_grouper = None):
     """ General computer.
     
     Args:    
@@ -71,12 +72,14 @@ def measure_computer(measure, dataframe, log_configuration: LogConfiguration = N
             computer = aggregated_compute(dataframe, measure, log_configuration, time_grouper)
         elif(type(measure) == DerivedMeasure):
             computer = derived_compute(dataframe, measure, log_configuration, time_grouper)
+        else:
+            raise ValueError("ERROR: Measure not valid. It should be count, data, time, aggregated and derived")
         return computer
     except ValueError as err:
         raise ValueError("ERROR: A value in the measure wasn't correctly defined") from err
 
 
-def count_compute(dataframe, measure, log_configuration):
+def count_compute(dataframe: pd.DataFrame, measure: CountMeasure, log_configuration: LogConfiguration):
     id_case = log_configuration.id_case
     precondition = (measure.when)
     filtered_series = condition_computer(dataframe, id_case, precondition, log_configuration.activity_column, log_configuration.transition_column)
@@ -137,6 +140,8 @@ def time_compute(dataframe, measure, log_configuration):
         final_result = _linear_time_compute(dataframe_to_work, A_condition, B_condition, is_first, 'id', 't', measure)   
     elif(time_measure_type == 'CYCLIC'):
         final_result = _cyclic_time_compute(dataframe_to_work, A_condition, B_condition, operation, 'id', 't', measure)
+    else:
+        raise ValueError("ERROR: Time measure type is not valid. It should be LINEAR or CYCLIC")
 
     result_reindex = final_result.reindex(dataframe[id_case].unique())
 
@@ -213,32 +218,52 @@ def _cyclic_time_compute(dataframeToWork, A_condition, B_condition, operation, i
     
 
 def _apply_aggregation(operation, grouped_df):
-
     if not isinstance(operation, str):
-        raise ValueError('Aggregation function must be a string: sum, min, max, avg or groupby')
+        raise ValueError('Aggregation function must be a string: sum, min, max, avg, median, pXX or groupby')
 
-    if(operation.upper() == 'SUM'):
-        if isinstance(grouped_df, pd.core.window.rolling.Rolling):
+    normalized_operation = operation.strip().upper()
+    percentile = _parse_percentile_operation(normalized_operation)
+
+    if normalized_operation == 'SUM':
+        is_rolling = hasattr(grouped_df, "window") and hasattr(grouped_df, "sum") and hasattr(grouped_df, "count")
+        if is_rolling:
             result = grouped_df.sum()
         else:
             result = grouped_df.sum(min_count=1)
 
-    elif(operation.upper() == "MIN"):
+    elif normalized_operation == "MIN":
         result = grouped_df.min()
 
-    elif(operation.upper() == "MAX"):
+    elif normalized_operation == "MAX":
         result = grouped_df.max()
 
-    elif(operation.upper() == "AVG"):
+    elif normalized_operation == "AVG":
         result = grouped_df.mean()
 
-    elif(operation.upper() == "GROUPBY"):
+    elif normalized_operation == "MEDIAN":
+        result = grouped_df.median()
+
+    elif percentile is not None:
+        result = grouped_df.quantile(percentile)
+
+    elif normalized_operation == "GROUPBY":
         result = grouped_df
 
     else:
-        raise ValueError(f'Aggregation operation not valid {operation}. Should be: sum, min, max, avg or groupby')
+        raise ValueError(f'Aggregation operation not valid {operation}. Should be: sum, min, max, avg, median, pXX or groupby')
 
     return result
+
+def _parse_percentile_operation(operation):
+    match = re.fullmatch(r"P(\d{1,3})", operation)
+    if not match:
+        return None
+
+    percentile = int(match.group(1))
+    if percentile < 1 or percentile > 99:
+        raise ValueError(f'Aggregation percentile {operation} not valid. XX must be in range 1..99')
+
+    return percentile / 100
 
 
 def _compute_cyclic_diff(from_condition, to_condition, id_case, timestamps, measure):
@@ -364,6 +389,8 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
     else:
         result_grouped = internal_df
 
+    normalized_operation = operation.strip().upper() if isinstance(operation, str) else operation
+
     if not isinstance(time_grouper, RollingWindow):
         final_result = _apply_aggregation(operation, result_grouped["data"])
     else:
@@ -374,16 +401,20 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
             rolling_result = result_grouped.rolling(roll_window, min_periods=roll_min_period, on='case_end', closed=roll_closed)
             final_result = _apply_aggregation(operation, rolling_result)
         else:
-            if operation.upper() == 'AVG':
+            if normalized_operation == 'AVG':
                 rolling_sum = result_grouped.sum().rolling(roll_window, min_periods=roll_min_period, closed=roll_closed).sum()
                 rolling_count = result_grouped.count().rolling(roll_window, min_periods=roll_min_period, closed=roll_closed).sum()
                 final_result = rolling_sum / rolling_count
+            elif normalized_operation == 'MEDIAN' or (
+                isinstance(normalized_operation, str) and _parse_percentile_operation(normalized_operation) is not None
+            ):
+                raise ValueError('MEDIAN and PXX are not supported with RollingWindow when apply_to_cases is False')
             else:   
                 agg_result = _apply_aggregation(operation, result_grouped)
                 rolling_result = agg_result.rolling(roll_window, min_periods=roll_min_period, closed=roll_closed)
                 final_result = _apply_aggregation(operation, rolling_result)
 
-    if(operation.upper() == "GROUPBY"):
+    if(normalized_operation == "GROUPBY"):
         is_time = False
 
     if isinstance(final_result, pd.DataFrame):
@@ -456,4 +487,3 @@ def business_duration_calculation(measure, from_values, to_values):
                                 index=from_values.index)
 
     return business_diff
-

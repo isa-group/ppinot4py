@@ -3,10 +3,6 @@ import pandas as pd
 import pytest
 from ppinot4py.model import RuntimeState, TimeInstantCondition, AppliesTo
 from ppinot4py.computers import condition_computer
-from business_duration import businessDuration
-import holidays as pyholidays
-from datetime import time
-from itertools import repeat
 
 
 def test_time_instant_process_start():

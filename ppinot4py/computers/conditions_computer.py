@@ -3,24 +3,27 @@ from ppinot4py.model import AppliesTo, RuntimeState, TimeInstantCondition
 import pandas as pd
 
 
-def condition_computer(dataframe, id_case, condition, activity_column, transition_column):
+def condition_computer(dataframe: pd.DataFrame, id_case, condition: str | TimeInstantCondition | pd.Series | None, activity_column: str, transition_column: str):
 
     if condition is None:
-        filteredSeries = dataframe
+        filtered_series = dataframe
         
     if(type(condition) == str):
-        dataframeValue = dataframe.query(condition)
-        filteredArray = dataframe.index.isin(dataframeValue.index)
-        filteredSeries = pd.Series(filteredArray)
+        dataframe_value = dataframe.query(condition)
+        filtered_array = dataframe.index.isin(dataframe_value.index)
+        filtered_series = pd.Series(filtered_array)
 
-    if(type(condition) == TimeInstantCondition):
-        filteredSeries = _time_instant_condition_resolve(dataframe, id_case, condition, activity_column, transition_column)
+    elif(type(condition) == TimeInstantCondition):
+        filtered_series = _time_instant_condition_resolve(dataframe, id_case, condition, activity_column, transition_column)
         
     #In revision    
-    if(type(condition) == pd.Series):
-        filteredSeries = condition
+    elif(type(condition) == pd.Series):
+        filtered_series = condition
+
+    else:
+        filtered_series = dataframe
   
-    return filteredSeries
+    return filtered_series
 
 
 def _time_instant_condition_resolve(dataframe, id_case, condition: TimeInstantCondition, activity_column, transition_column):
@@ -51,7 +54,7 @@ def _time_instant_condition_process_resolve(dataframe, id_case, changes_to_state
     else:
         shift = -1
 
-    condition = default_false.groupby(dataframe[id_case]).shift(shift).fillna(True)
+    condition = default_false.groupby(dataframe[id_case]).shift(shift).fillna(True).astype(bool)
     return condition
 
 def _time_instant_condition_data_resolve(dataframe, id_case, var):
@@ -59,7 +62,7 @@ def _time_instant_condition_data_resolve(dataframe, id_case, var):
 
     condition_in_series = pd.Series(dataframe.index.isin(condition.index))
 
-    condition_in_series_prev = condition_in_series.groupby(dataframe[id_case]).shift(+1).fillna(False)
+    condition_in_series_prev = condition_in_series.groupby(dataframe[id_case]).shift(+1).fillna(False).astype(bool)
 
     final_evaluation = ((condition_in_series) & (~condition_in_series_prev))
 

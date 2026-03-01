@@ -52,7 +52,7 @@ def test_aggregated_compute_time_grouped(log_for_time, log_config):
     timeResult1 = datetime.timedelta(days=365, minutes=46, seconds=6)
 
     var = measure_computer(aggregatedMeasure, log_for_time,
-                           log_config, time_grouper=pd.Grouper(freq='1Y'))
+                           log_config, time_grouper=pd.Grouper(freq='1YE'))
 
     assert var.size == 5
     assert var.iloc[0] == timeResult1
@@ -92,6 +92,57 @@ def test_aggregated_compute_time_no_group_min(log_for_time, log_config):
 
     assert var == datetime.timedelta(days=365)    
 
+def test_aggregated_compute_time_no_group_median(log_for_time, log_config):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"',
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA,
+        single_instance_agg_function='MEDIAN')
+
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config)
+
+    assert var == datetime.timedelta(days=365, minutes=46, seconds=6)
+
+def test_aggregated_compute_time_no_group_p90(log_for_time, log_config):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"',
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA,
+        single_instance_agg_function='P90')
+
+    var = measure_computer(aggregatedMeasure, log_for_time, log_config)
+
+    durations = [
+        datetime.timedelta(days=365, minutes=46, seconds=6).total_seconds(),
+        datetime.timedelta(days=365).total_seconds(),
+        datetime.timedelta(days=396).total_seconds()
+    ]
+    expected_seconds = np.quantile(durations, 0.9)
+
+    assert math.isclose(var.total_seconds(), expected_seconds, rel_tol=0, abs_tol=1e-6)
+
+def test_aggregated_compute_time_no_group_invalid_percentile(log_for_time, log_config):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"',
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA,
+        single_instance_agg_function='P100')
+
+    with pytest.raises(ValueError):
+        measure_computer(aggregatedMeasure, log_for_time, log_config)
+
 
 def test_derived_compute_time_condition(log_for_time, log_config):
     timeMeasureLinearA = TimeMeasure(
@@ -126,7 +177,7 @@ def test_derived_aggregated_time(log_for_time, log_config):
                                      "days366": pd.Timedelta(days=366)})
 
     var = measure_computer(derivedMeasure, log_for_time,
-                           log_config, time_grouper=pd.Grouper(freq='1Y'))
+                           log_config, time_grouper=pd.Grouper(freq='1YE'))
 
     assert var.size == 5
     assert np.all(var == [True, False, True, False, False])
@@ -142,9 +193,9 @@ def test_count_compute(log_config):
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment', 'In Progress']}
 
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(countMeasure, dataframeLinear, log_config).iloc[0]
+    var = measure_computer(countMeasure, dataframeLinear, log_config)
 
-    assert var == 2
+    assert var.iloc[0] == 2
 
 
 def test_count_compute_not_appear(log_config):
@@ -157,9 +208,9 @@ def test_count_compute_not_appear(log_config):
             'lifecycle:transition': ['In Progress', 'Awaiting Assignment', 'In Progress']}
 
     dataframeLinear = pd.DataFrame(data)
-    var = measure_computer(countMeasure, dataframeLinear, log_config).iloc[0]
+    var = measure_computer(countMeasure, dataframeLinear, log_config)
 
-    assert var == 0
+    assert var.iloc[0] == 0
 
 
 def test_count_compute_instances(log_config):
@@ -237,8 +288,8 @@ def test_time_linear_instances(log_config):
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
-    assert var == timeResult
+        timeMeasureLinearA, dataframeLinear, log_config)
+    assert var.iloc[0] == timeResult
 
 
 def test_time_linear_instances_with_several_from(log_config):
@@ -265,8 +316,8 @@ def test_time_linear_instances_with_several_from(log_config):
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
-    assert var == timeResult
+        timeMeasureLinearA, dataframeLinear, log_config)
+    assert var.iloc[0] == timeResult
 
 
 def test_time_linear_instances_WithSeveralToAndFirstTo(log_config):
@@ -293,8 +344,8 @@ def test_time_linear_instances_WithSeveralToAndFirstTo(log_config):
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
-    assert var == timeResult
+        timeMeasureLinearA, dataframeLinear, log_config)
+    assert var.iloc[0] == timeResult
 
 
 def test_time_linear_instances_WithSeveralToAndNotFirstTo(log_config):
@@ -321,8 +372,8 @@ def test_time_linear_instances_WithSeveralToAndNotFirstTo(log_config):
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
-    assert var == timeResult
+        timeMeasureLinearA, dataframeLinear, log_config)
+    assert var.iloc[0] == timeResult
 
 
 def test_time_linear_instances_WithSeveralFromAndToAndFirstTo2(log_config):
@@ -351,8 +402,8 @@ def test_time_linear_instances_WithSeveralFromAndToAndFirstTo2(log_config):
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
-    assert var == timeResult
+        timeMeasureLinearA, dataframeLinear, log_config)
+    assert var.iloc[0] == timeResult
 
 
 def test_time_cyclic_SumInstances(log_config):
@@ -383,9 +434,9 @@ def test_time_cyclic_SumInstances(log_config):
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureCyclic, dataframeLinear, log_config).iloc[0]
+        timeMeasureCyclic, dataframeLinear, log_config)
 
-    assert var == timeResult
+    assert var.iloc[0] == timeResult
 
 
 def test_time_cyclic_MaxInstances(log_config):
@@ -416,9 +467,9 @@ def test_time_cyclic_MaxInstances(log_config):
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureCyclic, dataframeLinear, log_config).iloc[0]
+        timeMeasureCyclic, dataframeLinear, log_config)
 
-    assert var == timeResult
+    assert var.iloc[0] == timeResult
 
 
 def test_time_cyclic_AvgInstances(log_config):
@@ -449,9 +500,9 @@ def test_time_cyclic_AvgInstances(log_config):
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureCyclic, dataframeLinear, log_config).iloc[0]
+        timeMeasureCyclic, dataframeLinear, log_config)
 
-    assert var == timeResult
+    assert var.iloc[0] == timeResult
 
 
 def test_derived_instances(log_config):
@@ -495,7 +546,7 @@ def test_derived_instances(log_config):
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(derived_measure, dataframeLinear, log_config)
 
-    assert var[0] == time_result
+    assert var.iloc[0] == time_result
 
 
 def test_time_linear_instances_businessDuration_from_7_to_17(log_config):
@@ -528,8 +579,8 @@ def test_time_linear_instances_businessDuration_from_7_to_17(log_config):
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
-    assert var == timeResult
+        timeMeasureLinearA, dataframeLinear, log_config)
+    assert var.iloc[0] == timeResult
 
 
 def test_time_linear_instances_businessDuration_from_7_to_17_severalFrom(log_config):
@@ -565,8 +616,8 @@ def test_time_linear_instances_businessDuration_from_7_to_17_severalFrom(log_con
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureLinearA, dataframeLinear, log_config).iloc[0]
-    assert var == timeResult
+        timeMeasureLinearA, dataframeLinear, log_config)
+    assert var.iloc[0] == timeResult
 
 
 def test_time_cyclic_SumInstances_businessDuration(log_config):
@@ -606,9 +657,9 @@ def test_time_cyclic_SumInstances_businessDuration(log_config):
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureCyclic, dataframeLinear, log_config).iloc[0]
+        timeMeasureCyclic, dataframeLinear, log_config)
 
-    assert var == timeResult
+    assert var.iloc[0] == timeResult
 
 
 def test_time_cyclic_MaxInstances_businessDuration(log_config):
@@ -648,9 +699,9 @@ def test_time_cyclic_MaxInstances_businessDuration(log_config):
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureCyclic, dataframeLinear, log_config).iloc[0]
+        timeMeasureCyclic, dataframeLinear, log_config)
 
-    assert var == timeResult
+    assert var.iloc[0] == timeResult
 
 
 def test_time_cyclic_AVGInstances_businessDuration(log_config):
@@ -690,9 +741,9 @@ def test_time_cyclic_AVGInstances_businessDuration(log_config):
 
     dataframeLinear = pd.DataFrame(data)
     var = measure_computer(
-        timeMeasureCyclic, dataframeLinear, log_config).iloc[0]
+        timeMeasureCyclic, dataframeLinear, log_config)
 
-    assert var == timeResult
+    assert var.iloc[0] == timeResult
 
 
 def test_data_computer_precondition_predefined_log_values(log_config):
@@ -821,6 +872,24 @@ def test_aggregated_compute_time_rolling_base_date_window_800_days_avg(log_for_t
     assert counts.index[2] == datetime.timedelta(days=365, minutes=23, seconds=3)
     assert counts.index[3] == datetime.timedelta(days=380, hours=12)
 
+def test_aggregated_compute_time_rolling_base_date_window_800_days_p90_not_supported(log_for_time, log_config):
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"', 
+        first_to=True)
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA,
+        single_instance_agg_function='P90')
+
+    rolling = RollingWindow(
+      window = "800D"
+    )
+
+    with pytest.raises(ValueError):
+        measure_computer(aggregatedMeasure, log_for_time, log_config, time_grouper=rolling)
+
 def test_aggregated_compute_time_rolling_base_numeric_window_3_center_sum(log_for_time, log_config):
 
     timeMeasureLinearA = TimeMeasure(
@@ -860,7 +929,7 @@ def test_time_computer_different_time_units_weeks(log_for_time):
     timeResult2 = 52.142857142857146
 
     var = measure_computer(aggregatedMeasure, log_for_time,
-                           LogConfiguration(), time_grouper=pd.Grouper(freq='1Y'))
+                           LogConfiguration(), time_grouper=pd.Grouper(freq='1YE'))
 
     assert var.size == 5
     assert var.iloc[0] == timeResult1
@@ -884,10 +953,9 @@ def test_time_computer_different_time_units_days(log_for_time):
     timeResult2 = 365.0
 
     var = measure_computer(aggregatedMeasure, log_for_time,
-                           LogConfiguration(), time_grouper=pd.Grouper(freq='1Y'))
+                           LogConfiguration(), time_grouper=pd.Grouper(freq='1YE'))
 
     assert var.size == 5
     assert var.iloc[0] == timeResult1
     assert pd.isnull(var.iloc[1])
     assert var.iloc[2] == timeResult2
-

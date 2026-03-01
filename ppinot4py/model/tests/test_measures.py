@@ -18,6 +18,16 @@ def test_aggregated_text():
     a = AggregatedMeasure(c, 'AVG', DataMeasure('PROJECT'))
     assert f"{a}" == "the average of the number of times ACT == 'open' grouped by the last value of PROJECT"
 
+def test_aggregated_text_median():
+    c = CountMeasure("ACT == 'open'")
+    a = AggregatedMeasure(c, 'MEDIAN')
+    assert f"{a}" == "the median of the number of times ACT == 'open'"
+
+def test_aggregated_text_percentile():
+    c = CountMeasure("ACT == 'open'")
+    a = AggregatedMeasure(c, 'P90')
+    assert f"{a}" == "the 90 percentile of the number of times ACT == 'open'"
+
 def test_derived_text():
     c = CountMeasure("ACT == 'open'")
     t = TimeMeasure("ACT == 'open'", "ACT == 'close'", first_to=True)

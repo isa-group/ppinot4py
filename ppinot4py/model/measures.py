@@ -1,6 +1,7 @@
 from .conditions import TimeInstantCondition
 import datetime
 import enum
+import re
 
 def _time_instance_auto_wrap(condition):
     if condition is None:
@@ -12,14 +13,29 @@ def _time_instance_auto_wrap(condition):
     return condition
 
 def _name_of_aggregation(agg):
-    if agg == "AVG":
+    if not isinstance(agg, str):
+        return str(agg)
+
+    normalized_agg = agg.strip().upper()
+
+    if normalized_agg == "AVG":
         return "average"
-    if agg == "MIN":
+    if normalized_agg == "MIN":
         return "minimum"
-    if agg == "MAX":
+    if normalized_agg == "MAX":
         return "maximum"
-    if agg == "SUM":
+    if normalized_agg == "SUM":
         return "sum"
+    if normalized_agg == "MEDIAN":
+        return "median"
+
+    percentile_match = re.fullmatch(r"P(\d{1,3})", normalized_agg)
+    if percentile_match:
+        percentile = int(percentile_match.group(1))
+        if 1 <= percentile <= 99:
+            return f"{percentile} percentile"
+
+    return agg
 
 class TimeUnit(enum.Enum):
     WEEK = "W"
@@ -83,7 +99,7 @@ class TimeMeasure(_MeasureDefinition):
         - time_measure_type: Linear in case just want a simple A-B calc, Cyclic in case you want to count 
             all pairs A-B appearances
         - single_instance_agg_function: Only in Cyclic mode. Type of operation applied to our dataset, 
-            can be MAX, MIN, SUM, or AVG. 
+            can be MAX, MIN, SUM, AVG, MEDIAN or PXX (where XX is 1..99). 
         - first_to: Only in Linear mode. True to take first appareance of B, false to take last appareance of B
         - precondition: Filter to previusly apply to our dataset. Note that, in this case, this precondition
                         is not a time instant condition, but a data condition (i.e., it is directly checked with
@@ -128,7 +144,7 @@ class AggregatedMeasure(_MeasureDefinition):
     
             - base_measure: First measure applied to the base dataframe.
             - single_instance_agg_function: Type of operation applied to our dataset, 
-                can be MAX, MIN, SUM, AVG or GROUPBY.
+                can be MAX, MIN, SUM, AVG, MEDIAN, PXX (where XX is 1..99) or GROUPBY.
             - grouper: Array of measures for grouping.
             - filter_to_apply: Measure applied to our base_measure to filter specific values. The measure
                                must resolve to either true or false.
@@ -196,6 +212,8 @@ class BusinessDuration():
         elif(self.unit_hour == 'min'):
             time_delta_type = lambda x: (datetime.timedelta(minutes = x))
         elif(self.unit_hour == 'sec'):
+            time_delta_type = lambda x: (datetime.timedelta(seconds = x))
+        else:
             time_delta_type = lambda x: (datetime.timedelta(seconds = x))
 
         return time_delta_type
