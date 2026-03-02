@@ -127,11 +127,14 @@ def measure_computer(measure, dataframe,
                       transition_column = 'lifecycle:transition',
                       activity_column = 'concept:name'
                     ),
-                    time_grouper = None):
+                    time_grouper = None,
+                    business_duration = None):
 ```
 `LogConfiguration` is a specification of the names of four attributes of the log that identify the case id (`id_case`), the time of the event (`time_column`), the name of the activity (`activity_column`) and the lifecycle transitions of the activity (`transition_column`). By default, all of these attributes will have the standard names as specified by the [XES standard](http://xes-standard.org). In case the user have custom names for these columns, they must be indicated.
 
 Time grouper is a [pandas Grouper object](https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases) that indicates how to group the results of an aggregated measure based on the time each case finishes. 
+
+`business_duration` is an optional default for `TimeMeasure` computations. If provided, it is used only for those `TimeMeasure` objects that do not define their own `business_duration`.
 
 ## Measures 
 
@@ -148,7 +151,7 @@ class CountMeasure():
 Example: For a certain event log and the following condition:
 
 ``` python
-countState = DataObjectState('concept:name == "In Progress"')
+countState = DataObjectState('`concept:name` == "In Progress"')
 countCondition = TimeInstantCondition(countState)
 countMeasure = CountMeasure(countCondition)
 
@@ -191,7 +194,7 @@ class DataMeasure():
 Example: For a certain event log and the following condition:
 
 ``` python
-countState = DataObjectState("org:group == 'V5 3rd'")
+countState = DataObjectState("`org:group` == 'V5 3rd'")
 precondition = TimeInstantCondition(countState)
 dataMeasure = DataMeasure("lifecycle:transition", precondition, True)
 
@@ -205,6 +208,26 @@ case_concept_name
 1-692918254            In Progress
 Name: lifecycle:transition, dtype: object
 ```
+
+Data measures can also be used to obtain the first and last activity of a case since activities are
+considered as another attribute (`concept:name`):
+
+``` python
+first_activity = DataMeasure("concept:name", first=True)
+last_activity = DataMeasure("concept:name", first=False)
+```
+
+They can also be used to obtain the timestamp using the attribute `time:timestamp`. In addition, if
+combined with a precondition, you can obtain when a certain activity first occurred or last occured:
+
+```python
+precondition = TimeInstantCondition('`concept:name` == "In Progress"')
+
+first_timestamp_inprogress = DataMeasure("time:timestamp", precondition=precondition, first=True)
+last_timestamp_inprogress = DataMeasure("time:timestamp", precondition=precondition, first=False)
+```
+
+
 
 ### Time measure
 
@@ -311,12 +334,33 @@ business = BusinessDuration(
 
 Where `business_start` and `business_end` are the times for the beginning and the end of the working day, `weekend_list` is the specification of the days that include the weekend (from 0 to 6), `holiday_list` is a list of the holidays (package pyholidays can be used for that), and `unit_hour` is the time unit in which the measure will be computed. The valid values are: `day`, `hour`, `min`, and `sec`.
 
+You can provide this business schedule directly in each `TimeMeasure`, or define it once in `measure_computer` as a default:
+
+```python
+business = BusinessDuration(
+    business_start=time(7, 0, 0),
+    business_end=time(17, 0, 0),
+    weekend_list=[5, 6],
+    holiday_list=pyholidays.ES(prov='AN')
+)
+
+tm_without_own_business = TimeMeasure(
+    '`concept:name` == "Create Fine"',
+    '`concept:name` == "Send Fine"'
+)
+
+# Applies `business` because tm_without_own_business.business_duration is None
+measure_computer(tm_without_own_business, dataframe, business_duration=business)
+```
+
+If a `TimeMeasure` defines its own `business_duration`, that measure-specific value is used instead of the global `business_duration` passed to `measure_computer`.
+
 ### Aggregated measure
 
 An aggregated measure aggregates the results obtained from any of the three previous base measures. It is composed of the following attributes:
 
 * `base_measure:` Can be any kind of the previous measures (Time, Count or Data)
-* `single_instance_agg_function:` Operation we want to apply to data of each Time aggrupation
+* `single_instance_agg_function:` Operation we want to apply to data
   * `SUM:` Sum of all values
   * `MIN:` Minimum value
   * `MAX:` Maximum value
@@ -324,19 +368,26 @@ An aggregated measure aggregates the results obtained from any of the three prev
   * `MEDIAN:` Median of all values
   * `pXX:` Percentile XX of all values. `XX` can be any integer between 1..99
   * `GROUPBY:` Raw grouped dataframe with no operation applied
-* `data_grouper:` List of measures to group by the base measure.
-* `filter_to_apply:` Filter to apply to the base_measure. It is a base measure that returns a boolean value
+* `grouper:` List of measures to group by the base measures before aggregating. If grouper is empty/`None`, there is one global aggregation over all cases. If `grouper` has values, the aggregation is computed per group (like SQL GROUP BY).
+* `filter_to_apply:` Filter to apply to the cases considered in the aggregation. It must a base measure that returns a boolean value for each case.
 
 ``` python
 class AggregatedMeasure():
 
-    def __init__(self, base_measure, single_instance_agg_function, data_grouper, filter_to_apply):
+    def __init__(self, base_measure, single_instance_agg_function, grouper, filter_to_apply):
   
         self.base_measure = base_measure
         self.filter_to_apply = filter_to_apply
         self.single_instance_agg_function = single_instance_agg_function
-        self.data_grouper = data_grouper
+        self.grouper = grouper
 ```
+
+So conceptually, the way this works is as follows:
+1. Compute `base_measure` per case
+2. Compute grouping key(s) from `grouper`
+3. Compute filter from `filter_to_apply`
+4. Remove cases where `filter_to_apply` is `False`
+5. Apply `single_instance_agg_function` (`SUM`, `AVG`, etc.) inside each group.
 
 The following example computes a linear time measure between 'In Progress' and 'Closed' and aggregates the values grouping by each 60 seconds:
 

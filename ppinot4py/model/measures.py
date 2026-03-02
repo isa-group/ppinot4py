@@ -1,5 +1,4 @@
 from .conditions import TimeInstantCondition
-import datetime
 import enum
 import re
 
@@ -142,12 +141,12 @@ class AggregatedMeasure(_MeasureDefinition):
     
     Args:
     
-            - base_measure: First measure applied to the base dataframe.
+            - base_measure: Measure that is being aggregated.
             - single_instance_agg_function: Type of operation applied to our dataset, 
                 can be MAX, MIN, SUM, AVG, MEDIAN, PXX (where XX is 1..99) or GROUPBY.
             - grouper: Array of measures for grouping.
-            - filter_to_apply: Measure applied to our base_measure to filter specific values. The measure
-                               must resolve to either true or false.
+            - filter_to_apply: Measure applied to the dataset to filter specific cases. The measure
+                               must resolve to either true or false for each case.
     """
     def __init__(self, base_measure, single_instance_agg_function, grouper=None, filter_to_apply=None):
         super().__init__()
@@ -195,29 +194,13 @@ class DerivedMeasure(_MeasureDefinition):
 
 class BusinessDuration():
     
-    def __init__(self, business_start, business_end, weekend_list=[5,6], holiday_list=None, unit_hour='min'):
+    def __init__(self, business_start, business_end, weekend_list=[5,6], holiday_list=None):
         super().__init__()
         
         self.business_start = business_start
         self.business_end = business_end
         self.weekend_list = weekend_list
         self.holiday_list = holiday_list
-        self.unit_hour = unit_hour
-
-    def conversion(self):
-        if(self.unit_hour == 'day'):
-            time_delta_type = lambda x: (datetime.timedelta(days = x))
-        elif(self.unit_hour == 'hour'):
-            time_delta_type = lambda x: (datetime.timedelta(hours = x))
-        elif(self.unit_hour == 'min'):
-            time_delta_type = lambda x: (datetime.timedelta(minutes = x))
-        elif(self.unit_hour == 'sec'):
-            time_delta_type = lambda x: (datetime.timedelta(seconds = x))
-        else:
-            time_delta_type = lambda x: (datetime.timedelta(seconds = x))
-
-        return time_delta_type
-
 class RollingWindow():
     """Window applied to the data to group with a moving window.
     

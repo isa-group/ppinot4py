@@ -40,7 +40,7 @@ class LogConfiguration():
         self.activity_column = activity_column
 
 
-def measure_computer(measure: _MeasureDefinition, dataframe: pd.DataFrame, log_configuration: LogConfiguration | None = None, time_grouper = None):
+def measure_computer(measure: _MeasureDefinition, dataframe: pd.DataFrame, log_configuration: LogConfiguration | None = None, time_grouper = None, business_duration = None):
     """ General computer.
     
     Args:    
@@ -49,6 +49,8 @@ def measure_computer(measure: _MeasureDefinition, dataframe: pd.DataFrame, log_c
         - log_configuration (optional): LogConfiguration that specifies the names of special columns of the log
         - time_grouper (optional): Time grouper (https://pandas.pydata.org/docs/user_guide/timeseries.html)
             without the key. If the measure is aggregated, it groups the result by instance end time
+        - business_duration (optional): Default business duration applied to TimeMeasures that do not
+            define their own business_duration.
             
     Returns:
         - Series: Series with pairs of case ID - Data
@@ -67,11 +69,11 @@ def measure_computer(measure: _MeasureDefinition, dataframe: pd.DataFrame, log_c
         elif(type(measure) == DataMeasure):
             computer = data_compute(dataframe,measure, log_configuration)
         elif(type(measure) == TimeMeasure):
-            computer = time_compute(dataframe,measure, log_configuration)
+            computer = time_compute(dataframe, measure, log_configuration, business_duration)
         elif(type(measure) == AggregatedMeasure):
-            computer = aggregated_compute(dataframe, measure, log_configuration, time_grouper)
+            computer = aggregated_compute(dataframe, measure, log_configuration, time_grouper, business_duration)
         elif(type(measure) == DerivedMeasure):
-            computer = derived_compute(dataframe, measure, log_configuration, time_grouper)
+            computer = derived_compute(dataframe, measure, log_configuration, time_grouper, business_duration)
         else:
             raise ValueError("ERROR: Measure not valid. It should be count, data, time, aggregated and derived")
         return computer
@@ -104,7 +106,7 @@ def data_compute(dataframe, measure, log_configuration):
 
     return result
 
-def time_compute(dataframe, measure, log_configuration):
+def time_compute(dataframe, measure, log_configuration, business_duration=None):
     operation = measure.single_instance_agg_function
     precondition = measure.precondition
     time_measure_type = measure.time_measure_type
@@ -112,6 +114,7 @@ def time_compute(dataframe, measure, log_configuration):
     to_condition = measure.to_condition
     is_first = measure.first_to
     time_unit = measure.time_unit
+    effective_business_duration = measure.business_duration if measure.business_duration is not None else business_duration
     
     id_case = log_configuration.id_case
     transition_column = log_configuration.transition_column
@@ -137,9 +140,9 @@ def time_compute(dataframe, measure, log_configuration):
     dataframe_to_work = pd.DataFrame({'id':filtered_dataframe[id_case], 't': removed_timezones})
 
     if(time_measure_type == 'LINEAR'): 
-        final_result = _linear_time_compute(dataframe_to_work, A_condition, B_condition, is_first, 'id', 't', measure)   
+        final_result = _linear_time_compute(dataframe_to_work, A_condition, B_condition, is_first, 'id', 't', effective_business_duration)
     elif(time_measure_type == 'CYCLIC'):
-        final_result = _cyclic_time_compute(dataframe_to_work, A_condition, B_condition, operation, 'id', 't', measure)
+        final_result = _cyclic_time_compute(dataframe_to_work, A_condition, B_condition, operation, 'id', 't', effective_business_duration)
     else:
         raise ValueError("ERROR: Time measure type is not valid. It should be LINEAR or CYCLIC")
 
@@ -150,17 +153,17 @@ def time_compute(dataframe, measure, log_configuration):
     else:
         return result_reindex
 
-def _linear_time_compute(dataframeToWork, from_condition, to_condition, is_first, id_case, time_column, measure):
-    filtered_dataframe_A = dataframeToWork[from_condition]
+def _linear_time_compute(df, from_condition, to_condition, is_first, id_case, time_column, business_duration=None):
+    filtered_dataframe_A = df[from_condition]
     from_values = filtered_dataframe_A.groupby(id_case)[time_column].first()
     
     if(is_first):
-        to_values = _first_to_after_from(from_condition, to_condition, dataframeToWork[id_case], dataframeToWork[time_column])
+        to_values = _first_to_after_from(from_condition, to_condition, df[id_case], df[time_column])
     else:
-        finalDataframeB = dataframeToWork[to_condition]        
+        finalDataframeB = df[to_condition]        
         to_values = finalDataframeB.groupby(id_case)[time_column].last()
     
-    final_result = _linear_calculation(from_values, to_values, measure)
+    final_result = _linear_calculation(from_values, to_values, business_duration)
 
     return final_result
 
@@ -179,42 +182,28 @@ def _first_to_after_from(from_condition, to_condition, id_values, ts_values):
     # Returns the first of them
     return df.groupby('id')['t'].first()
 
-def _linear_calculation(from_values, to_values, measure):
+def _linear_calculation(from_values, to_values, business_duration=None):
 
-    if(measure.business_duration is not None):
-        result_serie = business_duration_calculation(measure, from_values, to_values)
-        return result_serie    
+    if business_duration is not None:
+        result_serie = business_duration_calculation(business_duration, from_values, to_values)
     else:
-        finalResult = to_values - from_values   
-        finalResult[finalResult < pd.Timedelta(0)] = pd.Timedelta('nan')
-        return finalResult    
-#    finalResultWithNaN = finalResultAlmost.groupby(id_case).max()
-#    finalResultWithNegatives = finalResultWithNaN.dropna()
-#    finalResultDataframe = finalResultWithNegatives.to_frame('data')
-        
-#    finalResult = finalResultDataframe[finalResultDataframe['data'] > pd.Timedelta(0)]
-#    finalResult = finalResultAlmost[finalResultAlmost > pd.Timedelta(0)]
+        result_serie = to_values - from_values   
     
+    result_serie[result_serie < pd.Timedelta(0)] = pd.Timedelta('nan')    
+    return result_serie    
     
 
-def _cyclic_time_compute(dataframeToWork, A_condition, B_condition, operation, id_case, time_column, measure):        
+def _cyclic_time_compute(dataframeToWork, A_condition, B_condition, operation, id_case, time_column, business_duration=None):
 
-    diff = _compute_cyclic_diff(A_condition, B_condition, dataframeToWork[id_case], dataframeToWork[time_column], measure)
+    diff = _compute_cyclic_diff(A_condition, B_condition, dataframeToWork[id_case], dataframeToWork[time_column], business_duration)
 
     # We remove NaNs so that they do not get evaluated as 0 with sum
     diff = diff.dropna()
 
-    # This is necessary because sum() is not allowed in TimeDeltas
-    if(measure.business_duration is None):
-        diff = diff.dt.total_seconds()
-        conversion = lambda x: datetime.timedelta(seconds = x)
-    else:
-        conversion = measure.business_duration.conversion()
-
     grouped_diff = diff.groupby(dataframeToWork[id_case])
     result = _apply_aggregation(operation, grouped_diff)
 
-    return result.apply(conversion)  
+    return result
     
 
 def _apply_aggregation(operation, grouped_df):
@@ -266,7 +255,7 @@ def _parse_percentile_operation(operation):
     return percentile / 100
 
 
-def _compute_cyclic_diff(from_condition, to_condition, id_case, timestamps, measure):
+def _compute_cyclic_diff(from_condition, to_condition, id_case, timestamps, business_duration=None):
     df = pd.DataFrame({'id':id_case, 't': timestamps})
     df.loc[from_condition, 'c']='A'
     df.loc[to_condition, 'c']='B'
@@ -286,10 +275,12 @@ def _compute_cyclic_diff(from_condition, to_condition, id_case, timestamps, meas
 
     pair = (df['c']=='A')
 
-    if(measure.business_duration is not None):
-        return business_duration_calculation(measure, df.loc[pair,'t'], df_shifted.loc[pair, 't'])
-    else:
-        return df_shifted.loc[pair, 't'] - df.loc[pair,'t']
+    return _linear_calculation(df.loc[pair,'t'], df_shifted.loc[pair, 't'], business_duration)
+
+    # if(measure.business_duration is not None):
+    #     return business_duration_calculation(measure, df.loc[pair,'t'], df_shifted.loc[pair, 't'])
+    # else:
+    #     return df_shifted.loc[pair, 't'] - df.loc[pair,'t']
 
 # This method is an alternative implementation to _compute_cyclic_diff
 # and might be removed in the future
@@ -316,7 +307,7 @@ def _first_change_index(s, id_case):
     cum_change = s.groupby(id_case).cumsum()
     return s.index.to_series().groupby([id_case, cum_change]).first()
 
-def aggregated_compute(dataframe, measure, log_configuration, time_grouper = None):
+def aggregated_compute(dataframe, measure, log_configuration, time_grouper = None, business_duration = None):
     base_measure = measure.base_measure
     filter_to_apply = measure.filter_to_apply
     operation = measure.single_instance_agg_function
@@ -329,13 +320,13 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
 
     is_time = False
 
-    base_values = measure_computer(base_measure, dataframe, log_configuration)
+    base_values = measure_computer(base_measure, dataframe, log_configuration, business_duration=business_duration)
     
     case_end = dataframe.groupby(id_case)[time_column].last()
 
     
     if((filter_to_apply is not None) and filter_to_apply != ""):
-        filter_condition = measure_computer(filter_to_apply, dataframe, log_configuration)
+        filter_condition = measure_computer(filter_to_apply, dataframe, log_configuration, business_duration=business_duration)
         # We assume the filtered_condition is fine. Maybe we could do
         # some sanity checking here.
         base_values = base_values[filter_condition]
@@ -363,7 +354,7 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
                 if gr_key is None:
                     gr_key = 'group' + str(len(groupers))
             
-                internal_df[gr_key] = measure_computer(gr, dataframe, log_configuration)
+                internal_df[gr_key] = measure_computer(gr, dataframe, log_configuration, business_duration=business_duration)
                 groupers.append(gr_key)
             else:
                 groupers.append(gr)
@@ -431,7 +422,7 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
 
     return final_result
 
-def derived_compute(dataframe, measure, log_configuration, time_grouper=None):
+def derived_compute(dataframe, measure, log_configuration, time_grouper=None, business_duration=None):
     
     function = measure.function_expression
     measure_map = measure.measure_map
@@ -442,7 +433,7 @@ def derived_compute(dataframe, measure, log_configuration, time_grouper=None):
     
     for key in measure_map: 
         if isinstance(measure_map[key], _MeasureDefinition):
-            data_frame_computer[key] = measure_computer(measure_map[key], dataframe, log_configuration, time_grouper)        
+            data_frame_computer[key] = measure_computer(measure_map[key], dataframe, log_configuration, time_grouper, business_duration)
         else:
             data_frame_computer[key] = measure_map[key]
 
@@ -460,18 +451,17 @@ def derived_compute(dataframe, measure, log_configuration, time_grouper=None):
     final_result = evaluated_dataframe
     
     if istime and is_numeric_dtype(final_result.dtype) and not is_bool_dtype(final_result.dtype):
-        final_result = final_result.apply(lambda x: datetime.timedelta(seconds = x) if not np.isnan(x) else np.nan)
+        final_result = final_result.apply(lambda x: pd.Timedelta(seconds = x) if not np.isnan(x) else np.nan)
     
     return final_result
 
 
-def business_duration_calculation(measure, from_values, to_values):
+def business_duration_calculation(business_duration, from_values, to_values):
 
-    open_time= measure.business_duration.business_start
-    close_time= measure.business_duration.business_end
-    holiday_list = measure.business_duration.holiday_list
-    unit_hour= measure.business_duration.unit_hour
-    weekend_list = measure.business_duration.weekend_list
+    open_time= business_duration.business_start
+    close_time= business_duration.business_end
+    holiday_list = business_duration.holiday_list
+    weekend_list = business_duration.weekend_list
 
     from_values.name = 'start'
     to_values.name = 'end'
@@ -483,7 +473,9 @@ def business_duration_calculation(measure, from_values, to_values):
                                 repeat(close_time),
                                 repeat(weekend_list),
                                 repeat(holiday_list),
-                                repeat(unit_hour))),
+                                repeat('sec'))),
                                 index=from_values.index)
+    
+    business_diff = pd.to_timedelta(business_diff, unit='sec')
 
     return business_diff

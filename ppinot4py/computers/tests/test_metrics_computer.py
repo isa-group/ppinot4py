@@ -555,8 +555,7 @@ def test_time_linear_instances_businessDuration_from_7_to_17(log_config):
         business_start=time(7, 0, 0),
         business_end=time(17, 0, 0),
         weekend_list=[5, 6],
-        holiday_list=pyholidays.ES(prov='AN'),
-        unit_hour='sec'
+        holiday_list=pyholidays.ES(prov='AN')
     )
 
     timeMeasureLinearA = TimeMeasure(
@@ -571,7 +570,7 @@ def test_time_linear_instances_businessDuration_from_7_to_17(log_config):
 
     IdCase1 = '1-364285768'
 
-    timeResult = 18
+    timeResult = pd.Timedelta(seconds=18)
 
     data = {'case:concept:name': [IdCase1, IdCase1, IdCase1],
             'time:timestamp': [time1, time2, time3],
@@ -589,8 +588,7 @@ def test_time_linear_instances_businessDuration_from_7_to_17_severalFrom(log_con
         business_start=time(7, 0, 0),
         business_end=time(17, 0, 0),
         weekend_list=[5, 6],
-        holiday_list=pyholidays.ES(prov='AN'),
-        unit_hour='sec'
+        holiday_list=pyholidays.ES(prov='AN')
     )
 
     timeMeasureLinearA = TimeMeasure(
@@ -608,7 +606,7 @@ def test_time_linear_instances_businessDuration_from_7_to_17_severalFrom(log_con
     time5 = datetime.datetime(2012, 5, 6, 16, 44, 7)
     time6 = datetime.datetime(2012, 6, 6, 16, 44, 7)
 
-    timeResult = 18
+    timeResult = pd.Timedelta(seconds=18)
 
     data = {'case:concept:name': [IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase1],
             'time:timestamp': [time1, time2, time3, time4, time5, time6],
@@ -626,8 +624,7 @@ def test_time_cyclic_SumInstances_businessDuration(log_config):
         business_start=time(7, 0, 0),
         business_end=time(17, 0, 0),
         weekend_list=[5, 6],
-        holiday_list=pyholidays.ES(prov='AN'),
-        unit_hour='hour'
+        holiday_list=pyholidays.ES(prov='AN')
     )
 
     timeMeasureCyclic = TimeMeasure(
@@ -649,7 +646,7 @@ def test_time_cyclic_SumInstances_businessDuration(log_config):
     time7 = datetime.datetime(2012, 5, 3, 16, 44, 7)
     time8 = datetime.datetime(2012, 6, 6, 16, 44, 7)
 
-    timeResult = datetime.timedelta(days=209, hours=14, seconds=18)
+    timeResult = pd.Timedelta(days=209, hours=14, seconds=18)
 
     data = {'case:concept:name': [IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase2, IdCase1],
             'time:timestamp': [time1, time2, time3, time4, time5, time6, time7, time8],
@@ -668,8 +665,7 @@ def test_time_cyclic_MaxInstances_businessDuration(log_config):
         business_start=time(7, 0, 0),
         business_end=time(17, 0, 0),
         weekend_list=[5, 6],
-        holiday_list=pyholidays.ES(prov='AN'),
-        unit_hour='hour'
+        holiday_list=pyholidays.ES(prov='AN')
     )
 
     timeMeasureCyclic = TimeMeasure(
@@ -710,8 +706,7 @@ def test_time_cyclic_AVGInstances_businessDuration(log_config):
         business_start=time(7, 0, 0),
         business_end=time(17, 0, 0),
         weekend_list=[5, 6],
-        holiday_list=pyholidays.ES(prov='AN'),
-        unit_hour='hour'
+        holiday_list=pyholidays.ES(prov='AN')
     )
 
     timeMeasureCyclic = TimeMeasure(
@@ -744,6 +739,113 @@ def test_time_cyclic_AVGInstances_businessDuration(log_config):
         timeMeasureCyclic, dataframeLinear, log_config)
 
     assert var.iloc[0] == timeResult
+
+def test_time_linear_instances_global_businessDuration_default(log_config):
+
+    business = BusinessDuration(
+        business_start=time(7, 0, 0),
+        business_end=time(17, 0, 0),
+        weekend_list=[5, 6],
+        holiday_list=pyholidays.ES(prov='AN')
+    )
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"',
+        first_to=True
+    )
+
+    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
+    time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
+    time3 = datetime.datetime(2010, 4, 6, 16, 44, 7)
+
+    IdCase1 = '1-364285768'
+
+    expected_result = pd.Timedelta(seconds=18)
+
+    data = {'case:concept:name': [IdCase1, IdCase1, IdCase1],
+            'time:timestamp': [time1, time2, time3],
+            'lifecycle:transition': ['In Progress', 'Awaiting Assignment', 'In Progress']}
+
+    dataframeLinear = pd.DataFrame(data)
+    var = measure_computer(
+        timeMeasureLinearA, dataframeLinear, log_config, business_duration=business)
+    assert var.iloc[0] == expected_result
+
+def test_time_linear_instances_measure_businessDuration_overrides_global(log_config):
+
+    business_in_measure = BusinessDuration(
+        business_start=time(7, 0, 0),
+        business_end=time(17, 0, 0),
+        weekend_list=[5, 6],
+        holiday_list=pyholidays.ES(prov='AN')
+    )
+    business_global = BusinessDuration(
+        business_start=time(17, 30, 0),
+        business_end=time(18, 0, 0),
+        weekend_list=[5, 6],
+        holiday_list=pyholidays.ES(prov='AN')
+    )
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"',
+        first_to=True,
+        business_duration=business_in_measure
+    )
+
+    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
+    time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
+    time3 = datetime.datetime(2010, 4, 6, 16, 44, 7)
+
+    IdCase1 = '1-364285768'
+
+    expected_result = pd.Timedelta(seconds=18)
+
+    data = {'case:concept:name': [IdCase1, IdCase1, IdCase1],
+            'time:timestamp': [time1, time2, time3],
+            'lifecycle:transition': ['In Progress', 'Awaiting Assignment', 'In Progress']}
+
+    dataframeLinear = pd.DataFrame(data)
+    var = measure_computer(
+        timeMeasureLinearA, dataframeLinear, log_config, business_duration=business_global)
+    assert var.iloc[0] == expected_result
+
+def test_aggregated_time_uses_global_businessDuration_default(log_config):
+
+    business = BusinessDuration(
+        business_start=time(7, 0, 0),
+        business_end=time(17, 0, 0),
+        weekend_list=[5, 6],
+        holiday_list=pyholidays.ES(prov='AN')
+    )
+
+    timeMeasureLinearA = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"',
+        first_to=True
+    )
+
+    aggregatedMeasure = AggregatedMeasure(
+        base_measure=timeMeasureLinearA,
+        single_instance_agg_function='SUM')
+
+    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
+    time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
+    time3 = datetime.datetime(2010, 4, 6, 16, 44, 7)
+
+    IdCase1 = '1-364285768'
+
+    expected_result = pd.Timedelta(seconds=18)
+
+    data = {'case:concept:name': [IdCase1, IdCase1, IdCase1],
+            'time:timestamp': [time1, time2, time3],
+            'lifecycle:transition': ['In Progress', 'Awaiting Assignment', 'In Progress']}
+
+    dataframeLinear = pd.DataFrame(data)
+    var = measure_computer(
+        aggregatedMeasure, dataframeLinear, log_config, business_duration=business)
+    assert var == expected_result
 
 
 def test_data_computer_precondition_predefined_log_values(log_config):
@@ -798,6 +900,36 @@ def test_data_computer_precondition_non_predefined_log_values(log_config):
     result = measure_computer(dataMeasure, dataframeLinear, log)
 
     assert result.iloc[0] == 'Awaiting Assignment'
+
+def test_data_computer_timestamp_precondition_activity_timeinstant(log_config):
+
+    precondition = TimeInstantCondition(
+        RuntimeState.START, AppliesTo.ACTIVITY, "'Queued'")
+
+    dataMeasure = DataMeasure(
+        data_content_selection="time:timestamp",
+        precondition=precondition,
+        first=False)
+
+    IdCase1 = '1-364285768'
+    IdCase2 = '1-364285769'
+
+    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
+    time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
+    time3 = datetime.datetime(2010, 4, 6, 16, 44, 7)
+    time4 = datetime.datetime(2012, 4, 6, 16, 44, 7)
+
+    data = {'case:concept:name': [IdCase1, IdCase1, IdCase1, IdCase2],
+            'concept:name': ['Queued', 'Queued', 'Not queued', 'Queued'],
+            'time:timestamp': [time1, time2, time3, time4],
+            'lifecycle:transition': ['Assigned', 'Awaiting Assignment', 'Completed', 'Assigned']}
+
+    dataframeLinear = pd.DataFrame(data)
+
+    result = measure_computer(dataMeasure, dataframeLinear, log_config)
+
+    assert result.loc[IdCase1] == time1
+    assert result.loc[IdCase2] == time4
 
 def test_aggregated_compute_time_rolling_base_date_window_800_days_sum_to_cases(log_for_time, log_config):
 
