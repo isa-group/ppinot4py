@@ -109,7 +109,7 @@ def data_compute(dataframe, measure, log_configuration):
 def time_compute(dataframe, measure, log_configuration, business_duration=None):
     operation = measure.single_instance_agg_function
     precondition = measure.precondition
-    time_measure_type = measure.time_measure_type
+    time_measure_type = measure.time_measure_type.upper() if isinstance(measure.time_measure_type, str) else measure.time_measure_type
     from_condition = measure.from_condition
     to_condition = measure.to_condition
     is_first = measure.first_to
@@ -146,7 +146,7 @@ def time_compute(dataframe, measure, log_configuration, business_duration=None):
     else:
         raise ValueError("ERROR: Time measure type is not valid. It should be LINEAR or CYCLIC")
 
-    result_reindex = final_result.reindex(dataframe[id_case].unique())
+    result_reindex = final_result.reindex(dataframe[id_case].unique(), fill_value=pd.NaT)
 
     if(time_unit != None):
         return result_reindex/ np.timedelta64(1, time_unit.value)
@@ -423,36 +423,58 @@ def aggregated_compute(dataframe, measure, log_configuration, time_grouper = Non
     return final_result
 
 def derived_compute(dataframe, measure, log_configuration, time_grouper=None, business_duration=None):
-    
     function = measure.function_expression
     measure_map = measure.measure_map
-    data_frame_computer = pd.DataFrame()
-    id_case = log_configuration.id_case
-    time_column = log_configuration.time_column
+    resolved_values = {}
+    reference_index = None
     istime = False
-    
-    for key in measure_map: 
+
+    for key in measure_map:
         if isinstance(measure_map[key], _MeasureDefinition):
-            data_frame_computer[key] = measure_computer(measure_map[key], dataframe, log_configuration, time_grouper, business_duration)
+            value = measure_computer(measure_map[key], dataframe, log_configuration, time_grouper, business_duration)
         else:
-            data_frame_computer[key] = measure_map[key]
+            value = measure_map[key]
 
-        if(is_timedelta(data_frame_computer[key].dtype)):
-            data_frame_computer[key] = data_frame_computer[key].dt.total_seconds()
-            #data_frame_computer[key] = data_frame_computer[key].fillna(0).astype(float)
+        if isinstance(value, pd.Series) and reference_index is None:
+            reference_index = value.index
 
-            # If there is one time, we assume everything is time
+        resolved_values[key] = value
+
+    if reference_index is None:
+        scalar_context = {}
+        for key, value in resolved_values.items():
+            if isinstance(value, pd.Timedelta):
+                scalar_context[key] = value.total_seconds()
+                istime = True
+            else:
+                scalar_context[key] = value
+
+        final_result = pd.eval(function, local_dict=scalar_context)
+        if istime and pd.notna(final_result):
+            return pd.Timedelta(seconds=final_result)
+        return final_result
+
+    data_frame_computer = pd.DataFrame(index=reference_index)
+    for key, value in resolved_values.items():
+        if isinstance(value, pd.Series):
+            column = value.reindex(reference_index)
+        else:
+            column = pd.Series(value, index=reference_index)
+
+        if is_timedelta(column.dtype):
+            column = column.dt.total_seconds()
             istime = True
-  
-    evaluated_dataframe = data_frame_computer.eval(function)
-    #evaluated_dataframe_noInfinites = evaluated_dataframe.replace([np.inf, -np.inf], 0)
-    #final_result = evaluated_dataframe_noInfinites.fillna(0).astype(float)
+        elif isinstance(value, pd.Timedelta):
+            column = pd.Series(value.total_seconds(), index=reference_index)
+            istime = True
 
-    final_result = evaluated_dataframe
-    
+        data_frame_computer[key] = column
+
+    final_result = data_frame_computer.eval(function)
+
     if istime and is_numeric_dtype(final_result.dtype) and not is_bool_dtype(final_result.dtype):
-        final_result = final_result.apply(lambda x: pd.Timedelta(seconds = x) if not np.isnan(x) else np.nan)
-    
+        final_result = final_result.apply(lambda x: pd.Timedelta(seconds=x) if pd.notna(x) else pd.NaT)
+
     return final_result
 
 
@@ -475,7 +497,9 @@ def business_duration_calculation(business_duration, from_values, to_values):
                                 repeat(holiday_list),
                                 repeat('sec'))),
                                 index=from_values.index)
-    
-    business_diff = pd.to_timedelta(business_diff, unit='sec')
 
-    return business_diff
+    result = pd.Series(pd.NaT, index=business_diff.index, dtype="timedelta64[ns]")
+    valid = business_diff.notna()
+    result.loc[valid] = pd.to_timedelta(business_diff.loc[valid], unit="sec")
+
+    return result

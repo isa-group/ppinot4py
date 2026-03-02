@@ -504,6 +504,38 @@ def test_time_cyclic_AvgInstances(log_config):
 
     assert var.iloc[0] == timeResult
 
+def test_time_cyclic_lowercase_type(log_config):
+
+    timeMeasureCyclic = TimeMeasure(
+        from_condition='`lifecycle:transition` == "In Progress"',
+        to_condition='`lifecycle:transition` == "Awaiting Assignment"',
+        single_instance_agg_function='AVG',
+        time_measure_type='cyclic')
+
+    IdCase1 = '1-364285768'
+
+    time1 = datetime.datetime(2010, 3, 31, 16, 59, 42)
+    time2 = datetime.datetime(2010, 3, 31, 17, 45, 48)
+    time3 = datetime.datetime(2010, 4, 6, 16, 44, 7)
+    time4 = datetime.datetime(2012, 4, 6, 16, 44, 7)
+    time5 = datetime.datetime(2012, 5, 1, 16, 44, 7)
+    time6 = datetime.datetime(2012, 5, 2, 16, 44, 7)
+    time7 = datetime.datetime(2012, 5, 3, 16, 44, 7)
+    time8 = datetime.datetime(2012, 6, 6, 16, 44, 7)
+
+    timeResult = datetime.timedelta(
+        days=191, hours=12, minutes=11, seconds=31.5)
+
+    data = {'case:concept:name': [IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase1, IdCase1],
+            'time:timestamp': [time1, time2, time3, time4, time5, time6, time7, time8],
+            'lifecycle:transition': ['In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment', 'In Progress', 'Awaiting Assignment']}
+
+    dataframeLinear = pd.DataFrame(data)
+    var = measure_computer(
+        timeMeasureCyclic, dataframeLinear, log_config)
+
+    assert var.iloc[0] == timeResult
+
 
 def test_derived_instances(log_config):
 
@@ -547,6 +579,93 @@ def test_derived_instances(log_config):
     var = measure_computer(derived_measure, dataframeLinear, log_config)
 
     assert var.iloc[0] == time_result
+
+def test_kpi_duplicate_request_payment_ratio(log_config):
+    cnt_request = CountMeasure('`concept:name` == "Request Payment"')
+
+    den_has_request = DerivedMeasure(
+        'cnt_request >= 1', {'cnt_request': cnt_request})
+    num_duplicate = DerivedMeasure(
+        'cnt_request >= 2', {'cnt_request': cnt_request})
+
+    # Numerator: count cases with duplicates
+    num_cases = AggregatedMeasure(num_duplicate, 'SUM')
+    # Denominator: count cases with at least one request
+    den_cases = AggregatedMeasure(den_has_request, 'SUM')
+
+    kpi_metric = DerivedMeasure(
+        'num_cases / den_cases',
+        {
+            'num_cases': num_cases,
+            'den_cases': den_cases
+        }
+    )
+
+    data = {'case:concept:name': ['c1', 'c1', 'c2', 'c2', 'c2', 'c3', 'c4', 'c4', 'c4', 'c4', 'c4'],
+            'concept:name': ['Request Payment', 'Other', 'Request Payment', 'Other', 'Request Payment',
+                             'Other', 'Request Payment', 'Other', 'Request Payment', 'Other', 'Request Payment'],
+            'time:timestamp': [
+                datetime.datetime(2020, 1, 1, 10, 0, 0),
+                datetime.datetime(2020, 1, 1, 11, 0, 0),
+                datetime.datetime(2020, 1, 2, 10, 0, 0),
+                datetime.datetime(2020, 1, 2, 11, 0, 0),
+                datetime.datetime(2020, 1, 2, 12, 0, 0),
+                datetime.datetime(2020, 1, 3, 10, 0, 0),
+                datetime.datetime(2020, 1, 4, 10, 0, 0),
+                datetime.datetime(2020, 1, 4, 11, 0, 0),
+                datetime.datetime(2020, 1, 4, 12, 0, 0),
+                datetime.datetime(2020, 1, 4, 13, 0, 0),
+                datetime.datetime(2020, 1, 4, 14, 0, 0),
+            ]}
+
+    dataframe = pd.DataFrame(data)
+
+    result = measure_computer(kpi_metric, dataframe, log_config, time_grouper=pd.Grouper(freq='1YE'))
+
+    assert result.size == 1
+    assert result.iloc[0] == pytest.approx(2 / 3)
+
+def test_kpi_duplicate_request_payment_ratio_no_grouper(log_config):
+    cnt_request = CountMeasure('`concept:name` == "Request Payment"')
+
+    den_has_request = DerivedMeasure(
+        'cnt_request >= 1', {'cnt_request': cnt_request})
+    num_duplicate = DerivedMeasure(
+        'cnt_request >= 2', {'cnt_request': cnt_request})
+
+    num_cases = AggregatedMeasure(num_duplicate, 'SUM')
+    den_cases = AggregatedMeasure(den_has_request, 'SUM')
+
+    kpi_metric = DerivedMeasure(
+        'num_cases / den_cases',
+        {
+            'num_cases': num_cases,
+            'den_cases': den_cases
+        }
+    )
+
+    data = {'case:concept:name': ['c1', 'c1', 'c2', 'c2', 'c2', 'c3', 'c4', 'c4', 'c4', 'c4', 'c4'],
+            'concept:name': ['Request Payment', 'Other', 'Request Payment', 'Other', 'Request Payment',
+                             'Other', 'Request Payment', 'Other', 'Request Payment', 'Other', 'Request Payment'],
+            'time:timestamp': [
+                datetime.datetime(2020, 1, 1, 10, 0, 0),
+                datetime.datetime(2020, 1, 1, 11, 0, 0),
+                datetime.datetime(2020, 1, 2, 10, 0, 0),
+                datetime.datetime(2020, 1, 2, 11, 0, 0),
+                datetime.datetime(2020, 1, 2, 12, 0, 0),
+                datetime.datetime(2020, 1, 3, 10, 0, 0),
+                datetime.datetime(2020, 1, 4, 10, 0, 0),
+                datetime.datetime(2020, 1, 4, 11, 0, 0),
+                datetime.datetime(2020, 1, 4, 12, 0, 0),
+                datetime.datetime(2020, 1, 4, 13, 0, 0),
+                datetime.datetime(2020, 1, 4, 14, 0, 0),
+            ]}
+
+    dataframe = pd.DataFrame(data)
+
+    result = measure_computer(kpi_metric, dataframe, log_config)
+
+    assert result == pytest.approx(2 / 3)
 
 
 def test_time_linear_instances_businessDuration_from_7_to_17(log_config):
