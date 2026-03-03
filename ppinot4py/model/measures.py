@@ -11,6 +11,15 @@ def _time_instance_auto_wrap(condition):
     
     return condition
 
+def _name_of_data_selection(selection):
+    if selection == "concept:name":
+        return "activity"
+    if selection == "lifecycle:transition":
+        return "lifecycle transition"
+    if selection == "time:timestamp":
+        return "timestamp"
+    return selection
+
 def _name_of_aggregation(agg):
     if not isinstance(agg, str):
         return str(agg)
@@ -86,7 +95,8 @@ class DataMeasure(_MeasureDefinition):
     def __str__(self):
         first_text = "first" if self.first else "last"
         precondition_text = f" when {self.precondition}" if self.precondition is not None else ""
-        return f"the {first_text} value of {self.data_content_selection}{precondition_text}"
+        selection_text = _name_of_data_selection(self.data_content_selection)
+        return f"the {first_text} value of {selection_text}{precondition_text}"
 
 class TimeMeasure(_MeasureDefinition):
     """Measure to calc the time elapsed between A condition and B condition.
@@ -127,12 +137,13 @@ class TimeMeasure(_MeasureDefinition):
     def __str__(self):
         precon_text = f" if {self.precondition}" if self.precondition is not None else ""
         first_to_text = "first" if self.first_to else "last"
+        duration_text = "business duration" if self.business_duration is not None else "duration"
 
         if self.time_measure_type.upper() == 'LINEAR':
-            text = f"the duration between the first time instant when {self.from_condition} and the {first_to_text} time instant when {self.to_condition}{precon_text}"
+            text = f"the {duration_text} between the first time instant when {self.from_condition} and the {first_to_text} time instant when {self.to_condition}{precon_text}"
         else:
             agg_text = _name_of_aggregation(self.single_instance_agg_function)
-            text = f"the {agg_text} duration between the pairs of time instants when {self.from_condition} and when {self.to_condition}{precon_text}"
+            text = f"the {agg_text} {duration_text} between the pairs of time instants when {self.from_condition} and when {self.to_condition}{precon_text}"
         return text
 
 

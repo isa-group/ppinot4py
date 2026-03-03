@@ -1,4 +1,4 @@
-from .states import DataObjectState
+from .states import DataObjectState, ComplexState
 import enum
 
 class AppliesTo(enum.Enum):
@@ -46,6 +46,9 @@ class TimeInstantCondition():
     def __init__(self, changes_to_state, applies_to=AppliesTo.DATA, activity_name=None):
         if isinstance(changes_to_state, str):
             changes_to_state = DataObjectState(changes_to_state)
+        elif isinstance(changes_to_state, ComplexState):
+            if applies_to != AppliesTo.DATA or activity_name is not None:
+                raise ValueError("ComplexState is only supported with AppliesTo.DATA and activity_name=None")
         
         self.changes_to_state = changes_to_state
         self.applies_to = applies_to

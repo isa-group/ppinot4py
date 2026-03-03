@@ -1,8 +1,9 @@
 import datetime
 import pandas as pd
 import pytest
-from ppinot4py.model import RuntimeState, TimeInstantCondition, AppliesTo
+from ppinot4py.model import RuntimeState, TimeInstantCondition, AppliesTo, ComplexState, Type, DataObjectState
 from ppinot4py.computers import condition_computer
+from ppinot4py.computers.conditions_computer import _complex_state_condition_resolve
 
 
 def test_time_instant_process_start():
@@ -194,4 +195,109 @@ def test_time_instant_process_activity_no_lifecycle_START_error():
         with pytest.raises(ValueError):
                 condition_computer(dataframeLinear, "case:concept:name", precondition, 'concept:name', 'lifecycle:transition')
 
-        
+def test_time_instant_complex_state_eventually():
+        id_case = '1-1'
+
+        data = {'case:concept:name': [id_case, id_case, id_case, id_case, id_case, id_case],
+                'concept:name': ['A', 'C', 'B', 'A', 'B', 'B']}
+
+        dataframeLinear = pd.DataFrame(data)
+
+        complex_state = ComplexState(
+            first="`concept:name` == 'A'",
+            last=DataObjectState("`concept:name` == 'B'"),
+            state_type=Type.LEADSTO
+        )
+        precondition = TimeInstantCondition(complex_state, AppliesTo.DATA)
+        result = condition_computer(dataframeLinear, "case:concept:name", precondition, 'concept:name', 'lifecycle:transition')
+
+        result_expected = [False, False, True, False, True, False]
+        assert (result.values == result_expected).all()
+
+def test_complex_state_raw_leadsto():
+        id_case = '1-1'
+
+        data = {'case:concept:name': [id_case, id_case, id_case, id_case, id_case, id_case],
+                'concept:name': ['A', 'C', 'B', 'A', 'B', 'B']}
+
+        dataframeLinear = pd.DataFrame(data)
+        complex_state = ComplexState(
+            first="`concept:name` == 'A'",
+            last=DataObjectState("`concept:name` == 'B'"),
+            state_type=Type.LEADSTO
+        )
+
+        raw_result = _complex_state_condition_resolve(dataframeLinear, "case:concept:name", complex_state)
+
+        assert (raw_result.values == [False, False, True, False, True, False]).all()
+
+def test_complex_state_raw_leadsto_requires_new_first_after_match():
+        id_case = '1-1'
+
+        data = {'case:concept:name': [id_case, id_case, id_case, id_case, id_case, id_case, id_case, id_case],
+                'concept:name': ['A', 'C', 'B', 'C', 'B', 'A', 'C', 'B']}
+
+        dataframeLinear = pd.DataFrame(data)
+
+        complex_state = ComplexState(
+            first="`concept:name` == 'A'",
+            last="`concept:name` == 'B'",
+            state_type=Type.LEADSTO
+        )
+        raw_result = _complex_state_condition_resolve(dataframeLinear, "case:concept:name", complex_state)
+
+        assert (raw_result.values == [False, False, True, False, False, False, False, True]).all()
+
+def test_complex_state_raw_leadsto_requires_new_first_with_intermediate_events():
+        id_case = '1-1'
+
+        data = {'case:concept:name': [id_case, id_case, id_case, id_case, id_case, id_case],
+                'concept:name': ['A', 'A', 'C', 'B', 'C', 'B']}
+
+        dataframeLinear = pd.DataFrame(data)
+
+        complex_state = ComplexState(
+            first="`concept:name` == 'A'",
+            last="`concept:name` == 'B'",
+            state_type=Type.LEADSTO
+        )
+        raw_result = _complex_state_condition_resolve(dataframeLinear, "case:concept:name", complex_state)
+
+        assert (raw_result.values == [False, False, False, True, False, False]).all()
+
+def test_complex_state_raw_follows_standard_sequence():
+        id_case = '1-1'
+
+        data = {'case:concept:name': [id_case, id_case, id_case, id_case, id_case, id_case],
+                'concept:name': ['A', 'C', 'B', 'A', 'B', 'B']}
+
+        dataframeLinear = pd.DataFrame(data)
+        complex_state = ComplexState(
+            first="`concept:name` == 'A'",
+            last="`concept:name` == 'B'",
+            state_type=Type.FOLLOWS
+        )
+
+        raw_result = _complex_state_condition_resolve(dataframeLinear, "case:concept:name", complex_state)
+
+        assert (raw_result.values == [False, False, False, False, True, False]).all()
+
+def test_time_instant_complex_state_invalid_applies_to_error():
+        complex_state = ComplexState(
+            first="`concept:name` == 'A'",
+            last="`concept:name` == 'B'",
+            state_type=Type.FOLLOWS
+        )
+
+        with pytest.raises(ValueError):
+            TimeInstantCondition(complex_state, AppliesTo.ACTIVITY, "'A'")
+
+def test_time_instant_complex_state_activity_name_not_allowed_error():
+        complex_state = ComplexState(
+            first="`concept:name` == 'A'",
+            last="`concept:name` == 'B'",
+            state_type=Type.LEADSTO
+        )
+
+        with pytest.raises(ValueError):
+            TimeInstantCondition(complex_state, AppliesTo.DATA, "'A'")

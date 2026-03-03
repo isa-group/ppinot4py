@@ -111,6 +111,41 @@ beginActivityCreateFine = TimeInstantCondition(Runtime.START, AppliesTo.ACTIVITY
 endActivityCreateFine = TimeInstantCondition(Runtime.END, AppliesTo.ACTIVITY, "Create Fine")
 ```
 
+It is also possible to define a `TimeInstantCondition` using a `ComplexState`. A `ComplexState` has:
+
+* `first`: first data condition (`str` or `DataObjectState`)
+* `last`: second data condition (`str` or `DataObjectState`)
+* `state_type`: relation between `first` and `last` (`Type.FOLLOWS` or `Type.LEADSTO`)
+
+`ComplexState` can only be used with `AppliesTo.DATA` and `activity_name=None`.
+
+Example:
+
+```python
+complex_state = ComplexState(
+    first="`lifecycle:transition` == 'In Progress'",
+    last="`lifecycle:transition` == 'Awaiting Assignment'",
+    state_type=Type.LEADSTO
+)
+
+complex_condition = TimeInstantCondition(complex_state, AppliesTo.DATA)
+```
+
+Semantics:
+
+* `Type.FOLLOWS`: `last` must appear immediately after `first`.
+* `Type.LEADSTO`: `last` can appear eventually after `first`; after one match, a new `first` is needed for the next match.
+
+Examples (sequence of `lifecycle:transition` values):
+
+* `In Progress, Other, Awaiting Assignment, In Progress, Awaiting Assignment, Awaiting Assignment`
+  * `FOLLOWS` -> `False, False, False, False, True, False`
+  * `LEADSTO` -> `False, False, True, False, True, False`
+* `In Progress, Other, Awaiting Assignment, Other, Awaiting Assignment, In Progress, Other, Awaiting Assignment`
+  * `LEADSTO` -> `False, False, True, False, False, False, False, True`
+
+`TimeInstantCondition` semantics still apply on top of this: results are emitted on false->true transitions.
+
 
 **2. Series Condition**
 It is also possible to directly give the program a pandas Series with the calculated Boolean values.
@@ -327,12 +362,11 @@ business = BusinessDuration(
     business_start = time(7,0,0),
     business_end = time(17,0,0),
     weekend_list = [5,6],
-    holiday_list = pyholidays.ES(prov ='AN'),
-    unit_hour = 'sec'
+    holiday_list = pyholidays.ES(prov ='AN')
 )
 ```
 
-Where `business_start` and `business_end` are the times for the beginning and the end of the working day, `weekend_list` is the specification of the days that include the weekend (from 0 to 6), `holiday_list` is a list of the holidays (package pyholidays can be used for that), and `unit_hour` is the time unit in which the measure will be computed. The valid values are: `day`, `hour`, `min`, and `sec`.
+Where `business_start` and `business_end` are the times for the beginning and the end of the working day, `weekend_list` is the specification of the days that include the weekend (from 0 to 6), and `holiday_list` is a list of the holidays (package pyholidays can be used for that).
 
 You can provide this business schedule directly in each `TimeMeasure`, or define it once in `measure_computer` as a default:
 
