@@ -1,4 +1,4 @@
-from .conditions import TimeInstantCondition
+from .conditions import DataCondition, SeriesCondition, TimeInstantCondition
 import enum
 import re
 
@@ -60,12 +60,11 @@ class _MeasureDefinition():
 class CountMeasure(_MeasureDefinition):
     """Measure to calc how many times a condition happened.
     
-    Args:
-    
+    Args:    
             - when: Condition that you want to count
     """
 
-    def __init__(self, when):
+    def __init__(self, when: str | TimeInstantCondition | DataCondition | SeriesCondition):
         super().__init__()
         self.when = _time_instance_auto_wrap(when)
     
@@ -79,13 +78,15 @@ class DataMeasure(_MeasureDefinition):
     """Measure that returns a data from specific filter.
     
     Args:
-    
             - data_content_selection: Column you want to select
             - precondition: Condition (Time Instance Condition by default) to apply to data
             - first: True if you want to select first data, False if you want to select last
     """
     
-    def __init__(self, data_content_selection, precondition=None, first=False):
+    def __init__(self, 
+                 data_content_selection: str, 
+                 precondition: TimeInstantCondition | DataCondition | SeriesCondition | None=None, 
+                 first: bool=False):
         super().__init__()
        
         self.data_content_selection = data_content_selection
@@ -101,8 +102,7 @@ class DataMeasure(_MeasureDefinition):
 class TimeMeasure(_MeasureDefinition):
     """Measure to calc the time elapsed between A condition and B condition.
     
-    Args:
-    
+    Args:    
         - from_condition: Condition where you want to start counting, defined as A
         - to_condition: End condition, defined as B
         - time_measure_type: Linear in case just want a simple A-B calc, Cyclic in case you want to count 
@@ -117,9 +117,15 @@ class TimeMeasure(_MeasureDefinition):
         - time_unit: The time unit used to return the value.
     """
 
-    def __init__(self, from_condition, to_condition, 
-                    time_measure_type = 'LINEAR', single_instance_agg_function = 'SUM', 
-                         first_to = False, precondition = None, business_duration = None, time_unit = None):
+    def __init__(self, 
+                 from_condition: TimeInstantCondition | DataCondition | SeriesCondition, 
+                 to_condition: TimeInstantCondition | DataCondition | SeriesCondition, 
+                 time_measure_type: str = 'LINEAR', 
+                 single_instance_agg_function: str = 'SUM', 
+                 first_to: bool=False,
+                 precondition: str | None = None, 
+                 business_duration: BusinessDuration | None = None, 
+                 time_unit: TimeUnit | None = None):
         super().__init__()
   
         self.from_condition = _time_instance_auto_wrap(from_condition)

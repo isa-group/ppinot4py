@@ -2,16 +2,25 @@ from numpy import true_divide
 from ppinot4py.model import AppliesTo, RuntimeState, TimeInstantCondition, ComplexState, Type, DataObjectState
 import pandas as pd
 
+from ppinot4py.model.conditions import DataCondition
 
-def condition_computer(dataframe: pd.DataFrame, id_case, condition: str | TimeInstantCondition | pd.Series | None, activity_column: str, transition_column: str):
+
+def condition_computer(
+    dataframe: pd.DataFrame,
+    id_case,
+    condition: str | bool | TimeInstantCondition | pd.Series | None,
+    activity_column: str,
+    transition_column: str
+):
 
     if condition is None:
         filtered_series = dataframe
         
-    if(type(condition) == str):
-        dataframe_value = dataframe.query(condition)
-        filtered_array = dataframe.index.isin(dataframe_value.index)
-        filtered_series = pd.Series(filtered_array)
+    elif(type(condition) == str or type(condition) == bool):
+        filtered_series = _data_condition_resolve(dataframe, condition)
+    
+    elif(type(condition) == DataCondition):
+        filtered_series = _data_condition_resolve(dataframe, condition.condition)
 
     elif(type(condition) == TimeInstantCondition):
         filtered_series = _time_instant_condition_resolve(dataframe, id_case, condition, activity_column, transition_column)
@@ -32,7 +41,7 @@ def _time_instant_condition_resolve(dataframe, id_case, condition: TimeInstantCo
         if isinstance(condition.changes_to_state, ComplexState):
             raw_condition = _complex_state_condition_resolve(dataframe, id_case, condition.changes_to_state)
         else:
-            raw_condition = _data_state_condition_resolve(dataframe, _condition_to_query_expression(condition.changes_to_state))
+            raw_condition = _data_condition_resolve(dataframe, _condition_to_query_expression(condition.changes_to_state))
         return _apply_time_instant_semantics(raw_condition, dataframe[id_case])
     
     elif condition.applies_to == AppliesTo.PROCESS:
@@ -42,11 +51,11 @@ def _time_instant_condition_resolve(dataframe, id_case, condition: TimeInstantCo
         condition_checked = _check_state(condition.changes_to_state)
         if(_check_column_existence(dataframe, activity_column, transition_column)):
             data_condition = f'`{activity_column}` == {condition.activity_name} and `{transition_column}` == {condition_checked}'
-            raw_condition = _data_state_condition_resolve(dataframe, data_condition)
+            raw_condition = _data_condition_resolve(dataframe, data_condition)
             return _apply_time_instant_semantics(raw_condition, dataframe[id_case])
         elif(_check_end_condition(condition.changes_to_state)):
             data_condition = f'`{activity_column}` == {condition.activity_name}'
-            raw_condition = _data_state_condition_resolve(dataframe, data_condition)
+            raw_condition = _data_condition_resolve(dataframe, data_condition)
             return _apply_time_instant_semantics(raw_condition, dataframe[id_case])
         else: 
             raise ValueError("The activity or transition column don't exists in log")
@@ -64,13 +73,23 @@ def _time_instant_condition_process_resolve(dataframe, id_case, changes_to_state
     condition = default_false.groupby(dataframe[id_case]).shift(shift).fillna(True).astype(bool)
     return condition
 
-def _data_state_condition_resolve(dataframe, var):
+def _data_condition_resolve(dataframe, var):
+    if isinstance(var, bool):
+        return pd.Series(var, index=dataframe.index, dtype=bool)
+
+    if isinstance(var, str):
+        normalized_var = var.strip().lower()
+        if normalized_var == "true":
+            return pd.Series(True, index=dataframe.index, dtype=bool)
+        if normalized_var == "false":
+            return pd.Series(False, index=dataframe.index, dtype=bool)
+
     condition = dataframe.query(var)
-    return pd.Series(dataframe.index.isin(condition.index))
+    return pd.Series(dataframe.index.isin(condition.index), index=dataframe.index, dtype=bool)
 
 def _complex_state_condition_resolve(dataframe, id_case, complex_state):
-    first_series = _data_state_condition_resolve(dataframe, _condition_to_query_expression(complex_state.first))
-    last_series = _data_state_condition_resolve(dataframe, _condition_to_query_expression(complex_state.last))
+    first_series = _data_condition_resolve(dataframe, _condition_to_query_expression(complex_state.first))
+    last_series = _data_condition_resolve(dataframe, _condition_to_query_expression(complex_state.last))
 
     if complex_state.type == Type.FOLLOWS:
         first_before_last = first_series.groupby(dataframe[id_case]).shift(+1).fillna(False).astype(bool)

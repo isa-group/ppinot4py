@@ -79,7 +79,7 @@ This is just a small example of what can be done with ppinot4py. Next, you can f
 
 ## Conditions
 
-Measures need conditions to specify when to count or when to start or stop measuring time. In ppinot4py, you can specify these conditions in 2 different ways.
+Measures need conditions to specify when to count or when to start or stop measuring time. In ppinot4py, you can specify these conditions in three different ways.
 
 **1. Time Instant Condition:**
 ```python
@@ -119,18 +119,6 @@ It is also possible to define a `TimeInstantCondition` using a `ComplexState`. A
 
 `ComplexState` can only be used with `AppliesTo.DATA` and `activity_name=None`.
 
-Example:
-
-```python
-complex_state = ComplexState(
-    first="`lifecycle:transition` == 'In Progress'",
-    last="`lifecycle:transition` == 'Awaiting Assignment'",
-    state_type=Type.LEADSTO
-)
-
-complex_condition = TimeInstantCondition(complex_state, AppliesTo.DATA)
-```
-
 Semantics:
 
 * `Type.FOLLOWS`: `last` must appear immediately after `first`.
@@ -147,8 +135,50 @@ Examples (sequence of `lifecycle:transition` values):
 `TimeInstantCondition` semantics still apply on top of this: results are emitted on false->true transitions.
 
 
-**2. Series Condition**
-It is also possible to directly give the program a pandas Series with the calculated Boolean values.
+For example, the following metric counts the number of times when `Awaiting Assignment` immediately follows `In Progress` in each case:
+
+```python
+complex_state = ComplexState(
+    first="`concept:name` == 'In Progress'",
+    last="`concept:name` == 'Awaiting Assignment'",
+    state_type=Type.FOLLOWS
+)
+
+complex_condition = TimeInstantCondition(complex_state)
+count_condition = CountMeasure(when=complex_condition)
+```
+
+In this other example, the metric counts the number of times the sequence `In Progress` -> `Awaiting Assignment` appears (possibly with some events in between).:
+
+```python
+complex_state = ComplexState(
+    first="`concept:name` == 'In Progress'",
+    last="`concept:name` == 'Awaiting Assignment'",
+    state_type=Type.LEADSTO
+)
+
+complex_condition = TimeInstantCondition(complex_state)
+count_measure = CountMeasure(when=complex_condition)
+```
+
+**2. Data Condition**
+
+A `Data Condition` is used to count raw events. It evaluates to true for all events whose attributes meet the condition. For instance the following counts the number of events per case where the resource is the `SYSTEM`:
+
+```python
+resource_condition = DataCondition(condition="`org:resource`=='SYSTEM'")
+count_measure = CountMeasure(when=resource_condition)
+```
+
+You can also count the number of events per case using:
+
+```python
+all_events = DataCondition(condition=True)
+count_measure = CountMeasure(when=all_events)
+```
+
+**3. Series Condition**
+It is also possible to directly use as a condition a pandas Series with the calculated Boolean values.
 
 ## Measure computer
 

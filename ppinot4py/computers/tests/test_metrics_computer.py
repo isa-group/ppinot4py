@@ -230,6 +230,69 @@ def test_count_compute_instances(log_config):
     assert var.iloc[1] == 1
 
 
+def test_count_compute_data_condition_raw_events(log_config):
+
+    count_measure = CountMeasure(
+        when=DataCondition(condition="`org:resource`=='SYSTEM'")
+    )
+
+    id_case_1 = '1-364285768'
+    id_case_2 = '2-364285768'
+
+    data = {
+        'case:concept:name': [id_case_1, id_case_1, id_case_1, id_case_2, id_case_2],
+        'org:resource': ['SYSTEM', 'USER', 'SYSTEM', 'SYSTEM', 'SYSTEM']
+    }
+
+    dataframe_linear = pd.DataFrame(data)
+    var = measure_computer(count_measure, dataframe_linear, log_config)
+
+    assert var.loc[id_case_1] == 2
+    assert var.loc[id_case_2] == 2
+
+
+def test_count_compute_data_condition_true_counts_all_events(log_config):
+
+    count_measure = CountMeasure(
+        when=DataCondition(condition="True")
+    )
+
+    id_case_1 = '1-364285768'
+    id_case_2 = '2-364285768'
+
+    data = {
+        'case:concept:name': [id_case_1, id_case_1, id_case_1, id_case_2, id_case_2],
+        'org:resource': ['SYSTEM', 'USER', 'SYSTEM', 'SYSTEM', 'SYSTEM']
+    }
+
+    dataframe_linear = pd.DataFrame(data)
+    var = measure_computer(count_measure, dataframe_linear, log_config)
+
+    assert var.loc[id_case_1] == 3
+    assert var.loc[id_case_2] == 2
+
+
+def test_count_compute_data_condition_boolean_true_counts_all_events(log_config):
+
+    count_measure = CountMeasure(
+        when=DataCondition(condition=True)
+    )
+
+    id_case_1 = '1-364285768'
+    id_case_2 = '2-364285768'
+
+    data = {
+        'case:concept:name': [id_case_1, id_case_1, id_case_1, id_case_2, id_case_2],
+        'org:resource': ['SYSTEM', 'USER', 'SYSTEM', 'SYSTEM', 'SYSTEM']
+    }
+
+    dataframe_linear = pd.DataFrame(data)
+    var = measure_computer(count_measure, dataframe_linear, log_config)
+
+    assert var.loc[id_case_1] == 3
+    assert var.loc[id_case_2] == 2
+
+
 def test_data_computer(log_config):
 
     dataMeasure = DataMeasure(

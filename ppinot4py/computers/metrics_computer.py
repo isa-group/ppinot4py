@@ -87,7 +87,8 @@ def count_compute(dataframe: pd.DataFrame, measure: CountMeasure, log_configurat
     filtered_series = condition_computer(dataframe, id_case, precondition, log_configuration.activity_column, log_configuration.transition_column)
     result = filtered_series.groupby(dataframe[id_case]).sum()
 
-    return result
+    result_reindex = result.reindex(dataframe[id_case].unique())
+    return result_reindex
 
 def data_compute(dataframe, measure, log_configuration):
     precondition = (measure.precondition)
@@ -104,7 +105,9 @@ def data_compute(dataframe, measure, log_configuration):
     else:
         result = final_dataframe.groupby(id_case)[measure.data_content_selection].last()
 
-    return result
+    result_reindex = result.reindex(dataframe[id_case].unique())
+
+    return result_reindex
 
 def time_compute(dataframe, measure, log_configuration, business_duration=None):
     operation = measure.single_instance_agg_function
